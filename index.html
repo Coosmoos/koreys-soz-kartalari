@@ -433,15 +433,30 @@ async function listModels(key){
   const score = n => ver(n)*10 - (/lite/.test(n)?3:0) - (/preview|exp/.test(n)?1.5:0) - (/-\d{3}$|\d{2}-\d{2}/.test(n)?0.5:0);
   return [...new Set(ok)].sort((a,b)=>score(b)-score(a));
 }
+async function ensureModels(force){
+  // Model ro'yxatini Google'dan o'zi oladi: yangi qurilmada ham, haftada bir marta ham yangilanadi
+  const fresh = Date.now() - LS.get("modelsAt",0) < 7*DAY;
+  if(!force && settings.models.length && fresh) return;
+  try{
+    const models = await listModels(settings.key);
+    if(models.length){
+      settings.models = models; LS.set("models", models); LS.set("modelsAt", Date.now());
+      if(!models.includes(settings.model)){ settings.model = models[0]; LS.set("model", settings.model); }
+    }
+  }catch(e){}
+}
 function modelOrder(){
-  const list = settings.models.length ? settings.models : ["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash"];
+  const list = settings.models.length ? settings.models : ["gemini-flash-latest","gemini-flash-lite-latest","gemini-2.5-flash"];
   const first = settings.model && list.includes(settings.model) ? settings.model : list[0];
   return [first, ...list.filter(m=>m!==first)].slice(0,4);
 }
-async function gemini(parts){
+async function gemini(parts, retried){
   if(!settings.key) throw {code:"nokey"};
-  let lastErr;
-  for(const model of modelOrder()){
+  await ensureModels(false);
+  let lastErr, gone=false;
+  const queue = modelOrder(), tried = new Set();
+  while(queue.length && tried.size < 5){
+    const model = queue.shift(); if(tried.has(model)) continue; tried.add(model);
     const r = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
       method:"POST",
       headers:{"Content-Type":"application/json","x-goog-api-key":settings.key},
@@ -452,13 +467,21 @@ async function gemini(parts){
     if(r.ok){
       const text = ((((j.candidates||[])[0]||{}).content||{}).parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
       if(!text) { lastErr = {message:"Gemini bo'sh javob qaytardi"}; continue; }
+      if(settings.model !== model){ settings.model = model; LS.set("model", model); }   // ishlagan modelni eslab qolamiz
       return parseJSON(text);
     }
     lastErr = {status:r.status, message:(j.error&&j.error.message)||("HTTP "+r.status)};
-    // 429 (limit), 404/400 (model yo'q), 403 (ruxsat yo'q) bo'lsa keyingi modelni sinaymiz
     if(r.status===401 || (r.status===400 && /API key/i.test(lastErr.message))) break;
-    if(![429,404,403,400,500,503].includes(r.status)) break;
+    // eskirgan model: Google tavsiya qilgan yangi modelni darhol sinaymiz
+    if(/no longer available|not found|not supported|deprecated/i.test(lastErr.message)){
+      gone = true;
+      const sug = (lastErr.message.match(/models\/(gemini-[\w.-]+)/g)||[]).map(x=>x.replace("models/","").replace(/\.+$/,"")).filter(x=>x!==model);
+      queue.unshift(...sug);
+      continue;
+    }
+    if(![429,403,400,500,503].includes(r.status)) break;
   }
+  if(gone && !retried){ await ensureModels(true); return gemini(parts, true); }
   throw lastErr;
 }
 function parseJSON(t){
@@ -471,6 +494,7 @@ function errText(e){
   if(e.code==="nokey") return "Avval ⚙️ Sozlamalarda Gemini kalitini kiriting.";
   if(e.status===429) return "Gemini bepul limiti hozircha tugadi. Bir daqiqadan keyin yoki ertaga qayta urinib ko'ring.";
   if(e.status===400 && /API key/i.test(e.message)) return "Gemini kaliti noto'g'ri. ⚙️ Sozlamalarda tekshiring.";
+  if(/no longer available|not found/i.test(e.message||"")) return "Gemini modeli yangilandi — sahifani yangilab, qayta urinib ko'ring.";
   if(e.status===403) return "Bu kalit bilan Gemini'dan foydalanishga ruxsat yo'q (hudud yoki loyiha cheklovi bo'lishi mumkin).";
   return "Xatolik: "+esc(e.message||"noma'lum");
 }
@@ -1000,7 +1024,7 @@ function openSettings(msg){
     try{
       const models=await listModels(k);
       settings.key=k; LS.set("key",k); LS.set("keyMod",Date.now()); scheduleSync();
-      if(models.length){ settings.models=models; LS.set("models",models); if(!models.includes(settings.model)){ settings.model=models[0]; LS.set("model",settings.model);} }
+      if(models.length){ settings.models=models; LS.set("models",models); LS.set("modelsAt",Date.now()); if(!models.includes(settings.model)){ settings.model=models[0]; LS.set("model",settings.model);} }
       notice(""); openSettings(`<span style="color:var(--green)">✓ Kalit ishlayapti. Endi so'z qo'shishingiz mumkin.</span>`);
     }catch(e){ s.className="status err"; s.textContent="Kalit ishlamadi: "+(e.message||""); }
   };
@@ -1467,7 +1491,7 @@ async function syncNow(){
 
     // Gemini kaliti (faqat sizning Drive'ingizdagi yashirin papkada)
     const rs = remote.settings||{};
-    if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); }
+    if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); ensureModels(true); }
 
     // rasmlarni yuklash
     for(const c of cards){
