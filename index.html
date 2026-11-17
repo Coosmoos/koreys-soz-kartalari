@@ -35,7 +35,51 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .cdot.ok{background:var(--green)}.cdot.need{background:var(--amber)}.cdot.err{background:var(--red)}
 @media (max-width:420px){.stat{min-width:0;padding:5px 8px}.brand p{display:none}}
 nav.tabs{display:flex;gap:4px;background:#ebe4d9;padding:4px;border-radius:14px;margin-bottom:12px;position:sticky;top:6px;z-index:5}
-nav.tabs button{flex:1;border:0;background:transparent;padding:10px 4px;border-radius:10px;font-weight:700;color:#5d564e;font-size:14px}
+nav.tabs button{flex:1;border:0;background:transparent;padding:10px 2px;border-radius:10px;font-weight:700;color:#5d564e;font-size:14px;white-space:nowrap}
+@media (max-width:420px){nav.tabs button{font-size:12.5px}}
+/* sonlar */
+.num-hero{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.nh-t{font-size:18px;font-weight:800}
+.pill{background:var(--amber-soft);color:#7a5414;font-weight:800;font-size:13px;padding:6px 10px;border-radius:999px}
+.table-link{display:flex;align-items:center;gap:12px;width:100%;margin-top:10px;padding:14px 16px}
+.mode:disabled{opacity:.55}
+.rule-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:560px){.rule-grid{grid-template-columns:1fr}}
+.rule{border-radius:12px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.rule.n{background:var(--blue-soft);color:#173b5c}.rule.s{background:var(--amber-soft);color:#6b4a12}
+.ntable{width:100%;border-collapse:collapse;font-size:14.5px}
+.ntable th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:6px}
+.ntable td{padding:5px 6px;border-top:1px solid var(--line);white-space:nowrap}
+.ntable .iconbtn{width:26px;height:26px;font-size:11px;vertical-align:middle}
+.ex-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line);font-size:14.5px}
+.ex-row:first-of-type{border-top:0}
+.ex-row .iconbtn{width:28px;height:28px;font-size:12px}
+.ex-uz{font-size:12.5px;margin-left:auto}
+.lesson-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.lesson-top .bar{flex:1;height:10px}
+.combo{font-weight:800;color:var(--muted);font-size:14px;min-width:46px;text-align:right}
+.combo.hot{color:#e8590c}
+.q-title{font-weight:800;font-size:17px;margin-bottom:12px}
+.big-prompt{font-size:44px;font-weight:800;margin:6px 0;line-height:1.1}
+.big-prompt.ko{font-family:"Noto Sans KR";font-weight:700}
+.optsq.one{grid-template-columns:1fr}
+.big-say{width:84px;height:84px;border-radius:24px;border:0;background:var(--blue);color:#fff;font-size:34px;box-shadow:0 4px 0 #143553}
+.big-say:active{transform:translateY(3px);box-shadow:0 1px 0 #143553}
+.mic{width:96px;height:96px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:38px;margin:18px auto 8px;display:grid;place-items:center;box-shadow:0 4px 0 #8a2a1b}
+.mic.on{animation:pulse 1.1s ease-in-out infinite;background:#d9480f}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,72,15,.45)}50%{box-shadow:0 0 0 18px rgba(217,72,15,0)}}
+.fb-bar{margin-top:12px;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.fb-bar.ok{background:var(--green-soft);color:#1d5a37}.fb-bar.no{background:var(--red-soft);color:#8a2a1b}
+.fb-h{font-weight:800;font-size:18px}
+.fb-c{font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fb-s{font-size:13px;opacity:.9}
+.fb-bar .btn{margin-top:6px;align-self:stretch}
+.btn.green{background:var(--green);border-color:var(--green);color:#fff}
+.end-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+@media (max-width:480px){.end-stats{grid-template-columns:1fr 1fr}}
+.end-stats div{background:#faf6ef;border-radius:12px;padding:10px 6px}
+.end-stats b{display:block;font-size:20px}.end-stats small{color:var(--muted);font-size:11.5px}
 nav.tabs button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .folders{display:flex;gap:6px;margin-bottom:14px;align-items:center;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .folders::-webkit-scrollbar{display:none}
@@ -200,9 +244,10 @@ textarea.field{resize:vertical;min-height:54px}
 
   <nav class="tabs">
     <button data-tab="add" class="on">Qo'shish</button>
-    <button data-tab="review">Takrorlash</button>
+    <button data-tab="review">Takror</button>
     <button data-tab="practice">Mashq</button>
     <button data-tab="library">Lug'at</button>
+    <button data-tab="numbers">Sonlar</button>
   </nav>
 
   <div class="folders" id="folders"></div>
@@ -231,6 +276,7 @@ textarea.field{resize:vertical;min-height:54px}
 
   <section id="tab-review" class="hidden"></section>
   <section id="tab-practice" class="hidden"></section>
+  <section id="tab-numbers" class="hidden"></section>
   <section id="tab-library" class="hidden">
     <input id="search" class="field" placeholder="Qidirish: koreyscha yoki o'zbekcha…">
     <div class="grid" id="grid"></div>
@@ -324,10 +370,10 @@ let koVoice = null;
 function pickVoice(){ const v = speechSynthesis.getVoices(); koVoice = v.find(x=>/^ko/i.test(x.lang)) || null; }
 const canSpeak = "speechSynthesis" in window;
 if(canSpeak){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(t){
+function speak(t, rate){
   if(!canSpeak) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t); u.lang="ko-KR"; u.rate=.9; if(koVoice) u.voice=koVoice;
+  const u = new SpeechSynthesisUtterance(t); u.lang="ko-KR"; u.rate=rate||.9; if(koVoice) u.voice=koVoice;
   speechSynthesis.speak(u);
 }
 const spk = t => canSpeak ? `<button class="iconbtn" data-say="${esc(t)}" title="Eshitish">🔊</button>` : "";
@@ -985,6 +1031,325 @@ $("#importIn").onchange=async e=>{
   }catch(err){ const s=$("#bkStatus"); if(s){ s.className="status err"; s.textContent="Bu fayl zaxira nusxa emas."; } }
 };
 
+/* ================= SONLAR (ikki sanoq tizimi) ================= */
+const SD = "일이삼사오육칠팔구".split("");
+function sinoSmall(n){
+  let s=""; for(const [v,w] of [[1000,"천"],[100,"백"],[10,"십"]]){ const d=Math.floor(n/v)%10; if(d) s+=(d===1?"":SD[d-1])+w; }
+  const d=n%10; if(d) s+=SD[d-1]; return s;
+}
+function sino(n){ if(n===0) return "영"; const man=Math.floor(n/10000), r=n%10000; return (man?(man===1?"":sinoSmall(man))+"만":"")+sinoSmall(r); }
+const NU=["","하나","둘","셋","넷","다섯","여섯","일곱","여덟","아홉"], NUA=["","한","두","세","네","다섯","여섯","일곱","여덟","아홉"];
+const NT=["","열","스물","서른","마흔","쉰","예순","일흔","여든","아흔"];
+function native(n, attr){ const t=Math.floor(n/10), u=n%10; const tens=(attr&&t===2&&u===0)?"스무":NT[t]; return tens+(attr?NUA[u]:NU[u]); }
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{ a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const NATIVE_LBL="Koreyscha (하나, 둘, 셋…)", SINO_LBL="Xitoycha (일, 이, 삼…)";
+
+// kontekstlar: qaysi so'z bilan qaysi tizim ishlatiladi
+const CTX = [
+  // --- koreyscha sonlar ---
+  {id:"sal", sys:"n", c:"살", r:[1,60], uz:n=>`${n} yosh`, rule:"Yosh (살) koreyscha sonlar bilan aytiladi."},
+  {id:"si", sys:"n", c:"시", r:[1,12], uz:n=>`soat ${n} (vaqt)`, rule:"Soat (시) koreyscha sonlar bilan: 한 시, 두 시…"},
+  {id:"sigan", sys:"n", c:"시간", r:[1,12], uz:n=>`${n} soat davomida`, rule:"Davomiylik (시간) ham koreyscha: 두 시간 = 2 soat."},
+  {id:"gae", sys:"n", c:"개", r:[1,20], uz:n=>`${n} dona (narsa)`, rule:"Narsalarni sanash (개) koreyscha sonlar bilan."},
+  {id:"myeong", sys:"n", c:"명", r:[1,30], uz:n=>`${n} kishi`, rule:"Odamlarni sanash (명) koreyscha sonlar bilan."},
+  {id:"mari", sys:"n", c:"마리", r:[1,15], uz:n=>`${n} ta hayvon`, rule:"Hayvonlarni sanash (마리) koreyscha sonlar bilan."},
+  {id:"byeong", sys:"n", c:"병", r:[1,10], uz:n=>`${n} shisha`, rule:"Shisha/butilka (병) koreyscha sonlar bilan."},
+  {id:"jan", sys:"n", c:"잔", r:[1,10], uz:n=>`${n} stakan / piyola`, rule:"Stakan, piyola (잔) koreyscha sonlar bilan."},
+  {id:"gwon", sys:"n", c:"권", r:[1,10], uz:n=>`${n} ta kitob`, rule:"Kitob, daftar (권) koreyscha sonlar bilan."},
+  {id:"jang", sys:"n", c:"장", r:[1,10], uz:n=>`${n} varaq / chipta`, rule:"Yassi narsalar — varaq, chipta (장) — koreyscha."},
+  {id:"beon-n", sys:"n", c:"번", r:[1,10], uz:n=>`${n} marta`, rule:"«Necha marta» ma'nosidagi 번 — koreyscha: 두 번 = 2 marta. «Raqam» ma'nosidagi 번 esa xitoycha!"},
+  {id:"dal", sys:"n", c:"달", r:[1,11], uz:n=>`${n} oy davomida`, rule:"달 (oy davomiyligi) — koreyscha: 세 달. Xuddi shu ma'nodagi 개월 esa xitoycha: 삼 개월."},
+  // --- xitoycha sonlar ---
+  {id:"bun", sys:"s", c:"분", r:[1,59], uz:n=>`${n} daqiqa`, rule:"Daqiqa (분) xitoycha sonlar bilan."},
+  {id:"cho", sys:"s", c:"초", r:[1,59], uz:n=>`${n} soniya`, rule:"Soniya (초) xitoycha sonlar bilan."},
+  {id:"won", sys:"s", c:"원", gen:()=>pick([100,500,700,1000,1500,2000,2500,3000,3500,4500,5000,6000,8000,9900,10000,12000,15000,25000,30000,50000]), uz:n=>`${n.toLocaleString("en").replace(/,/g," ")} von`, rule:"Pul (원) doim xitoycha sonlar bilan. 10 000 = 만 (일만 emas)."},
+  {id:"cheung", sys:"s", c:"층", r:[1,30], uz:n=>`${n}-qavat`, rule:"Qavat (층) xitoycha sonlar bilan."},
+  {id:"wol", sys:"s", c:"월", r:[1,12], uz:n=>`${n}-oy (${["yanvar","fevral","mart","aprel","may","iyun","iyul","avgust","sentabr","oktabr","noyabr","dekabr"][n-1]})`, rule:"Oy nomlari (월) xitoycha. Diqqat: 6월 = 유월, 10월 = 시월."},
+  {id:"il", sys:"s", c:"일", r:[1,31], uz:n=>`oyning ${n}-kuni`, rule:"Sana — kun (일) xitoycha sonlar bilan."},
+  {id:"nyeon", sys:"s", c:"년", r:[1995,2030], uz:n=>`${n}-yil`, rule:"Yil (년) xitoycha sonlar bilan."},
+  {id:"beon-s", sys:"s", c:"번 버스", r:[1,99], uz:n=>`${n}-avtobus`, rule:"Raqam, tartib raqami (○번 버스, ○번 출구) — xitoycha."},
+  {id:"gaewol", sys:"s", c:"개월", r:[1,12], uz:n=>`${n} oy davomida`, rule:"개월 (oy davomiyligi) — xitoycha: 삼 개월. Xuddi shu ma'nodagi 달 esa koreyscha."},
+  {id:"hangnyeon", sys:"s", c:"학년", r:[1,6], uz:n=>`${n}-sinf / kurs`, rule:"Sinf, kurs (학년) xitoycha sonlar bilan."},
+  {id:"inbun", sys:"s", c:"인분", r:[1,5], uz:n=>`${n} porsiya`, rule:"Porsiya (인분) xitoycha sonlar bilan."},
+  {id:"ho", sys:"s", c:"호", gen:()=>rnd(1,12)*100+rnd(1,12), uz:n=>`${n}-xona`, rule:"Xona raqami (호) xitoycha sonlar bilan."},
+  {id:"jjok", sys:"s", c:"쪽", r:[1,250], uz:n=>`${n}-sahifa`, rule:"Sahifa (쪽) xitoycha sonlar bilan."},
+  // --- aralash: vaqt ---
+  {id:"time", sys:"m", uz:null, rule:"Vaqtda: soat (시) — koreyscha, daqiqa (분) — xitoycha. 세 시 이십 분 = 3:20."},
+];
+function sinoWord(ctx, n){ return ctx.id==="wol" ? (n===6?"유월":n===10?"시월":sino(n)+"월") : `${sino(n)} ${ctx.c}`; }
+function nativeWord(ctx, n){ return `${native(n,true)} ${ctx.c}`; }
+function makeItem(ctx){
+  if(ctx.id==="time"){
+    const h=rnd(1,12), m=pick([5,10,15,20,25,30,35,40,45,50,55]);
+    return {ctx, n:h, text:`${h}시 ${m}분`, uz:`soat ${h}:${String(m).padStart(2,"0")}`,
+      read:`${native(h,true)} 시 ${sino(m)} 분`, wrong:`${sino(h)} 시 ${native(m,true)} 분`,
+      extra:[`${native(h,true)} 시 ${native(m,true)} 분`, `${sino(h)} 시 ${sino(m)} 분`]};
+  }
+  const n = ctx.gen ? ctx.gen() : rnd(ctx.r[0], ctx.r[1]);
+  const text = ctx.id==="wol" ? `${n}월` : `${n}${ctx.c.startsWith("번 ")?"번 버스":ctx.c}`;
+  const read = ctx.sys==="n" ? nativeWord(ctx,n) : sinoWord(ctx,n);
+  const wrong = ctx.sys==="n" ? sinoWord(ctx,n) : (n<=99 ? nativeWord(ctx,n) : null);
+  const extra = [];
+  if(ctx.sys==="n" && native(n,true)!==native(n,false)) extra.push(`${native(n,false)} ${ctx.c}`);   // 하나 살 xatosi
+  if(ctx.id==="wol" && (n===6||n===10)) extra.push(n===6?"육월":"십월");
+  const n2 = n + (Math.random()<.5?1:-1);
+  if(n2>0) extra.push(ctx.sys==="n" && n2<=99 ? nativeWord(ctx,n2) : sinoWord(ctx,n2));
+  return {ctx, n, text, uz:ctx.uz(n), read, wrong, extra};
+}
+const flat = s => String(s).normalize("NFC").replace(/[\s.,!?~·:]/g,"");
+
+// zaif joylarni kuzatish
+function errW(){ return LS.get("numErr",{}); }
+function bumpErr(id, d){ const e=errW(); e[id]=Math.max(0,(e[id]||0)+d); LS.set("numErr",e); }
+function pickCtx(filter){
+  const list = CTX.filter(filter||(()=>true)), e=errW();
+  const w = list.map(c=>1+Math.min(6,(e[c.id]||0)*2)); let t=w.reduce((a,b)=>a+b,0)*Math.random();
+  for(let i=0;i<list.length;i++){ t-=w[i]; if(t<=0) return list[i]; } return list[list.length-1];
+}
+
+// ovoz effektlari
+let actx=null;
+function beep(ok){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const notes = ok ? [[880,0],[1320,.09]] : [[220,0],[180,.12]];
+    for(const [f,t] of notes){
+      const o=actx.createOscillator(), g=actx.createGain(); o.type=ok?"sine":"square"; o.frequency.value=f;
+      g.gain.setValueAtTime(.0001, actx.currentTime+t); g.gain.exponentialRampToValueAtTime(ok?.18:.06, actx.currentTime+t+.02);
+      g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime+t+.22);
+      o.connect(g); g.connect(actx.destination); o.start(actx.currentTime+t); o.stop(actx.currentTime+t+.25);
+    }
+  }catch(e){}
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+const MODES = {
+  sys:   {i:"🧭", t:"Qaysi tizim?", d:"So'zga qarab koreyscha yoki xitoycha son kerakligini toping"},
+  read:  {i:"✅", t:"To'g'ri o'qilishi", d:"4 ta variantdan to'g'ri aytilishini tanlang"},
+  listen:{i:"🎧", t:"Tinglab top", d:"Eshitgan soningizni raqam bilan yozing"},
+  speak: {i:"🎤", t:"Gapirib ko'r", d:"Ovoz chiqarib ayting — dastur tekshiradi"},
+  type:  {i:"⌨️", t:"Hangulda yoz", d:"Raqamni koreyscha yoki xitoycha so'z bilan yozing"},
+  mix:   {i:"🎲", t:"Aralash dars", d:"Hamma turdagi 10 ta savol — Duolingo uslubida"},
+};
+let nl = null; // joriy dars
+
+function numStats(){
+  const today=new Date().toISOString().slice(0,10), d=LS.get("numDays",{last:"",streak:0});
+  const y=new Date(Date.now()-DAY).toISOString().slice(0,10);
+  return {xp:LS.get("numXP",0), streak:(d.last===today||d.last===y)?d.streak:0, today:d.last===today};
+}
+function finishDay(){
+  const today=new Date().toISOString().slice(0,10), y=new Date(Date.now()-DAY).toISOString().slice(0,10), d=LS.get("numDays",{last:"",streak:0});
+  if(d.last===today) return; LS.set("numDays",{last:today, streak: d.last===y ? d.streak+1 : 1});
+}
+
+function renderNumbers(){
+  const el=$("#tab-numbers");
+  if(nl){ renderQ(); return; }
+  if(numView==="table"){ renderTable(); return; }
+  const st=numStats(), e=errW();
+  const weak = CTX.filter(c=>(e[c.id]||0)>=1).sort((a,b)=>e[b.id]-e[a.id]).slice(0,4);
+  el.innerHTML = `
+    <div class="panel num-hero">
+      <div><div class="nh-t">Koreys sonlari</div><div class="muted" style="font-size:13px">하나·둘·셋 yoki 일·이·삼 — qachon qaysi biri?</div></div>
+      <div class="row" style="gap:8px"><span class="pill">🔥 ${st.streak} kun</span><span class="pill">⭐ ${st.xp} XP</span></div>
+    </div>
+    <button class="panel table-link" data-nv="table"><span style="font-size:22px">📖</span><div style="flex:1;text-align:left"><b>Jadval va qoidalar</b><div class="muted" style="font-size:12.5px">Ikki tizim, qisqargan shakllar va qaysi so'z bilan qaysi tizim</div></div><span class="muted">›</span></button>
+    <div class="mode-pick" style="margin-top:10px">
+      ${Object.entries(MODES).map(([k,m])=>{
+        const off = k==="speak" && !SR;
+        return `<button class="mode" data-nm="${k}" ${off?"disabled":""}><div class="i">${m.i}</div><b>${m.t}</b><span>${off?"Bu brauzerda mikrofon orqali tanib olish ishlamaydi — Chrome'da oching.":m.d}</span></button>`;
+      }).join("")}
+    </div>
+    ${weak.length?`<div class="panel" style="margin-top:10px"><b style="font-size:14px">Ko'proq mashq kerak:</b>
+      <div class="row" style="margin-top:8px">${weak.map(c=>`<span class="tag ${c.sys==="n"?"":"h"}" style="font-size:12.5px">${esc(c.c||"vaqt")} · ${c.sys==="n"?"koreyscha":c.sys==="s"?"xitoycha":"aralash"}</span>`).join("")}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:6px">Bu so'zlar savollarda tez-tez chiqadi, toki to'g'ri javob bermaguningizcha.</div></div>`:""}`;
+  el.querySelectorAll("[data-nm]").forEach(b=>b.onclick=()=>startLesson(b.dataset.nm));
+  el.querySelector("[data-nv]").onclick=()=>{ numView="table"; renderNumbers(); };
+}
+let numView="home";
+
+function renderTable(){
+  const el=$("#tab-numbers");
+  const rows=[1,2,3,4,5,6,7,8,9,10,11,20,21,30,40,50,60,70,80,90,99];
+  const nat = CTX.filter(c=>c.sys==="n"), sin = CTX.filter(c=>c.sys==="s");
+  const ex = c => { const it=makeItem(c); return `<div class="ex-row"><span class="ko">${esc(it.text)}</span><span class="muted">→</span><span class="ko"><b>${esc(it.read)}</b></span>${spk(it.read)}<span class="muted ex-uz">${esc(it.uz)}</span></div>`; };
+  el.innerHTML = `
+    <button class="btn sm" id="nBack">← Orqaga</button>
+    <div class="panel" style="margin-top:10px">
+      <h3 style="margin:0 0 6px">Qisqa qoida</h3>
+      <div class="rule-grid">
+        <div class="rule n"><b>Koreyscha (하나, 둘…)</b><span>Sanash: nechta narsa, odam, hayvon, necha marta · yosh · soat (vaqt) · faqat 1–99</span></div>
+        <div class="rule s"><b>Xitoycha (일, 이…)</b><span>Raqam va o'lchov: daqiqa, soniya · sana (yil, oy, kun) · pul · qavat, xona, avtobus, sahifa · telefon · 100 dan kattasi</span></div>
+      </div>
+      <div class="note">💡 Koreyscha sonlar so'z oldida qisqaradi: 하나→<b>한</b>, 둘→<b>두</b>, 셋→<b>세</b>, 넷→<b>네</b>, 스물→<b>스무</b>. Masalan: 한 살, 두 개, 세 시, 스무 살.</div>
+    </div>
+    <div class="panel" style="margin-top:10px;overflow-x:auto">
+      <table class="ntable"><thead><tr><th></th><th>Koreyscha</th><th>so'z oldida</th><th>Xitoycha</th></tr></thead><tbody>
+      ${rows.map(n=>`<tr><td><b>${n}</b></td><td class="ko">${native(n,false)} ${spk(native(n,false))}</td><td class="ko muted">${native(n,true)!==native(n,false)?native(n,true):""}</td><td class="ko">${sino(n)} ${spk(sino(n))}</td></tr>`).join("")}
+      <tr><td><b>100</b></td><td class="muted" colspan="2">— (xitoycha ishlatiladi)</td><td class="ko">백</td></tr>
+      <tr><td><b>1 000</b></td><td class="muted" colspan="2">—</td><td class="ko">천</td></tr>
+      <tr><td><b>10 000</b></td><td class="muted" colspan="2">—</td><td class="ko">만</td></tr>
+      </tbody></table>
+    </div>
+    <div class="panel" style="margin-top:10px"><h3 style="margin:0 0 6px">Koreyscha son bilan</h3>${nat.map(ex).join("")}</div>
+    <div class="panel" style="margin-top:10px"><h3 style="margin:0 0 6px">Xitoycha son bilan</h3>${sin.map(ex).join("")}</div>
+    <div class="panel" style="margin-top:10px"><h3 style="margin:0 0 6px">Aralash</h3>${ex(CTX.find(c=>c.id==="time"))}
+      <div class="note">⚠️ Chalkash juftliklar: <b>두 번</b> (2 marta) ↔ <b>이 번 버스</b> (2-avtobus) · <b>세 달</b> ↔ <b>삼 개월</b> (ikkalasi ham 3 oy).</div></div>`;
+  $("#nBack").onclick=()=>{ numView="home"; renderNumbers(); };
+}
+
+function makeQ(type){
+  if(type==="mix") type = pick(SR ? ["sys","read","read","listen","type","speak"] : ["sys","read","read","listen","type"]);
+  if(type==="listen"){ const ctx=pickCtx(c=>c.sys!=="m" && c.id!=="nyeon"); return {type, it:makeItem(ctx)}; }
+  if(type==="type"){
+    const sys = Math.random()<.5?"n":"s", n=rnd(1,99);
+    return {type, sys, n, answer: sys==="n"?native(n,false):sino(n), alt: sys==="n"?native(n,true):null};
+  }
+  const ctx = pickCtx(type==="sys" ? (c=>c.sys!=="m") : null);
+  const it = makeItem(ctx);
+  if(type==="read"){
+    const opts=[it.read]; for(const o of [it.wrong, ...shuffle(it.extra)]) if(o && !opts.includes(o) && opts.length<4) opts.push(o);
+    while(opts.length<3){ const o=makeItem(ctx).read; if(!opts.includes(o)) opts.push(o); }
+    return {type, it, opts:shuffle(opts)};
+  }
+  return {type, it};
+}
+function startLesson(mode){
+  const qs=[]; for(let i=0;i<10;i++) qs.push(makeQ(mode));
+  nl = {mode, qs, i:0, ok:0, combo:0, best:0, xp:0, answered:false, wrongs:[]};
+  renderQ();
+}
+function lessonHead(){
+  return `<div class="lesson-top"><button class="iconbtn" id="nQuit" title="Chiqish">✕</button>
+    <div class="bar" style="margin:0"><i style="width:${nl.i/nl.qs.length*100}%"></i></div>
+    <span class="combo ${nl.combo>=3?"hot":""}">🔥 ${nl.combo}</span></div>`;
+}
+function renderQ(){
+  const el=$("#tab-numbers");
+  if(nl.i>=nl.qs.length){ renderLessonEnd(); return; }
+  const q=nl.qs[nl.i]; nl.answered=false;
+  let body="";
+  if(q.type==="sys"){
+    body=`<div class="q-title">Bu yerda qaysi sonlar ishlatiladi?</div>
+      <div class="big-prompt ko">${esc(q.it.text)}</div><div class="muted">${esc(q.it.uz)}</div>
+      <div class="optsq one">${[["n",NATIVE_LBL],["s",SINO_LBL]].map(([k,l])=>`<button data-a="${k}">${l}</button>`).join("")}</div>`;
+  } else if(q.type==="read"){
+    body=`<div class="q-title">Qanday o'qiladi?</div>
+      <div class="big-prompt ko">${esc(q.it.text)}</div><div class="muted">${esc(q.it.uz)}</div>
+      <div class="optsq one">${q.opts.map((o,i)=>`<button class="ko" data-a="${i}">${esc(o)}</button>`).join("")}</div>`;
+  } else if(q.type==="listen"){
+    const c=q.it.ctx.id==="wol"?"월":q.it.ctx.c;
+    body=`<div class="q-title">Tinglang va sonni yozing</div>
+      <div class="row" style="justify-content:center;gap:10px;margin:14px 0"><button class="big-say" id="play">🔊</button><button class="btn sm" id="slow">🐢 Sekin</button></div>
+      <div class="row" style="justify-content:center;gap:8px;flex-wrap:nowrap"><input id="numAns" class="field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="max-width:150px;text-align:center;font-size:22px;font-weight:700"><span class="ko" style="font-size:20px">${esc(c)}</span></div>
+      <div class="row" style="justify-content:center;margin-top:12px"><button class="btn primary" id="chk">Tekshirish</button></div>`;
+  } else if(q.type==="speak"){
+    body=`<div class="q-title">Ovoz chiqarib ayting</div>
+      <div class="big-prompt ko">${esc(q.it.text)}</div><div class="muted">${esc(q.it.uz)}</div>
+      <button class="mic" id="mic"><span>🎤</span></button>
+      <div class="muted" id="micHint" style="font-size:13px">Bosing va gapiring</div>
+      <div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="skipSpeak">Hozir gapira olmayman</button></div>`;
+  } else if(q.type==="type"){
+    body=`<div class="q-title">Hangulda yozing</div>
+      <div class="big-prompt">${q.n}</div>
+      <div><span class="tag ${q.sys==="n"?"":"h"}" style="font-size:13px">${q.sys==="n"?NATIVE_LBL:SINO_LBL}</span></div>
+      <input id="hanAns" class="field ko" autocomplete="off" autocapitalize="off" placeholder="한국어로…" style="max-width:260px;margin:14px auto 0;display:block;text-align:center;font-size:20px">
+      <div class="row" style="justify-content:center;margin-top:12px"><button class="btn primary" id="chk">Tekshirish</button></div>`;
+  }
+  el.innerHTML = `<div class="q-wrap">${lessonHead()}<div class="panel q-card">${body}</div><div id="fbBar"></div></div>`;
+  $("#nQuit").onclick=()=>{ nl=null; renderNumbers(); };
+  wireQ(q);
+}
+function wireQ(q){
+  const el=$("#tab-numbers");
+  if(q.type==="sys") el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+    if(nl.answered) return; const ok=b.dataset.a===q.it.ctx.sys;
+    b.classList.add(ok?"right":"wrong"); if(!ok) el.querySelector(`[data-a="${q.it.ctx.sys}"]`).classList.add("right");
+    answer(q, ok);
+  });
+  if(q.type==="read") el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+    if(nl.answered) return; const ok=q.opts[+b.dataset.a]===q.it.read;
+    b.classList.add(ok?"right":"wrong"); if(!ok) el.querySelectorAll("[data-a]").forEach(x=>{ if(q.opts[+x.dataset.a]===q.it.read) x.classList.add("right"); });
+    answer(q, ok);
+  });
+  if(q.type==="listen"){
+    const play=r=>speak(q.it.read, r); $("#play").onclick=()=>play(.9); $("#slow").onclick=()=>play(.55);
+    setTimeout(()=>play(.9), 250);
+    const inp=$("#numAns"); inp.focus();
+    const go=()=>{ if(nl.answered) return next(); const v=inp.value.replace(/\D/g,""); if(!v) return; answer(q, +v===q.it.n, `Siz yozdingiz: ${v}`); inp.disabled=true; };
+    $("#chk").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
+  }
+  if(q.type==="type"){
+    const inp=$("#hanAns"); inp.focus();
+    const go=()=>{ if(nl.answered) return next(); if(!inp.value.trim()) return; const v=flat(inp.value);
+      answer(q, v===flat(q.answer) || (q.alt && v===flat(q.alt))); inp.disabled=true; };
+    $("#chk").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
+  }
+  if(q.type==="speak"){
+    $("#skipSpeak").onclick=()=>{ nl.qs[nl.i]={...q, type:"read", opts:shuffle([q.it.read, ...[q.it.wrong,...q.it.extra].filter(Boolean)].filter((v,i,a)=>a.indexOf(v)===i).slice(0,4))}; renderQ(); };
+    $("#mic").onclick=()=>listenSpeech(q);
+  }
+}
+let rec=null;
+function listenSpeech(q){
+  if(!SR || nl.answered) return;
+  try{ rec && rec.abort(); }catch(e){}
+  rec = new SR(); rec.lang="ko-KR"; rec.interimResults=false; rec.maxAlternatives=5;
+  const mic=$("#mic"), hint=$("#micHint");
+  mic.classList.add("on"); hint.textContent="Eshityapman… gapiring";
+  rec.onresult = ev => {
+    const alts=[...ev.results[0]].map(a=>a.transcript.trim());
+    const fa=alts.map(flat), heard=alts[0];
+    const good=flat(q.it.read), bad=q.it.wrong?flat(q.it.wrong):null, digits=flat(q.it.text);
+    if(fa.includes(good)) answer(q, true, `Eshitildi: «${heard}»`);
+    else if(bad && fa.includes(bad)) answer(q, false, `Eshitildi: «${heard}» — bu boshqa tizim.`);
+    else if(fa.includes(digits)) answer(q, true, `Eshitildi: «${heard}». Tanib olish tizimi raqam bilan yozgani uchun qaysi tizimda aytganingizni aniq tekshirib bo'lmadi.`, true);
+    else answer(q, false, `Eshitildi: «${heard}»`);
+  };
+  rec.onerror = e => { mic.classList.remove("on");
+    hint.textContent = e.error==="not-allowed"||e.error==="service-not-allowed" ? "Mikrofonga ruxsat berilmagan. Brauzer sozlamalaridan ruxsat bering." : e.error==="no-speech" ? "Ovoz eshitilmadi. Qayta bosib, gapiring." : "Tanib bo'lmadi, qayta urinib ko'ring."; };
+  rec.onend = () => mic.classList.remove("on");
+  try{ rec.start(); }catch(e){ hint.textContent="Mikrofonni ishga tushirib bo'lmadi."; }
+}
+function answer(q, ok, heardNote, soft){
+  nl.answered=true; beep(ok);
+  if(ok){ nl.ok++; nl.combo++; nl.best=Math.max(nl.best,nl.combo); nl.xp += 10 + (nl.combo>=3?5:0); if(q.it) bumpErr(q.it.ctx.id,-.5); }
+  else { nl.combo=0; if(q.it){ bumpErr(q.it.ctx.id,1); nl.wrongs.push(q.it.ctx.id); } }
+  let correct, rule="";
+  if(q.type==="type"){ correct = q.answer + (q.alt && q.alt!==q.answer ? ` (so'z oldida: ${q.alt})` : ""); rule = q.sys==="n"?"Koreyscha sanoq: 하나, 둘, 셋… 아흔아홉 (1–99).":"Xitoycha sanoq: 일, 이, 삼… 십, 백, 천, 만."; }
+  else { correct = q.it.read; rule = q.it.ctx.rule; }
+  const sayText = q.type==="type" ? q.answer : q.it.read;
+  $("#fbBar").innerHTML = `<div class="fb-bar ${ok?"ok":"no"}">
+    <div class="fb-h">${ok?(soft?"✓ Qabul qilindi":pick(["To'g'ri! 👏","Barakalla! 🎉","Zo'r! ✨","Aynan! 💯"])):"Noto'g'ri"}</div>
+    ${heardNote?`<div class="fb-s">${esc(heardNote)}</div>`:""}
+    <div class="fb-c"><span class="ko">${q.type==="type"?"":esc(q.it.text)+" → "}<b>${esc(correct)}</b></span> ${spk(sayText)}</div>
+    <div class="fb-s">💡 ${esc(rule)}</div>
+    <button class="btn ${ok?"green":"primary"}" id="nNext">Davom etish</button></div>`;
+  $("#nNext").onclick=next; $("#nNext").focus();
+  if(q.type!=="listen") setTimeout(()=>speak(sayText),150);
+  const top=$(".lesson-top .combo"); if(top){ top.textContent="🔥 "+nl.combo; top.classList.toggle("hot",nl.combo>=3); }
+}
+function next(){ if(!nl) return; nl.i++; renderQ(); }
+function renderLessonEnd(){
+  const el=$("#tab-numbers"); finishDay(); LS.set("numXP", LS.get("numXP",0)+nl.xp);
+  const pct=Math.round(nl.ok/nl.qs.length*100), st=numStats();
+  const weak=[...new Set(nl.wrongs)].map(id=>CTX.find(c=>c.id===id));
+  el.innerHTML=`<div class="panel empty">
+    <div class="e">${pct>=90?"🏆":pct>=60?"🎯":"💪"}</div><h3>Dars tugadi!</h3>
+    <div class="end-stats"><div><b>${pct}%</b><small>aniqlik</small></div><div><b>+${nl.xp}</b><small>XP</small></div><div><b>${nl.best}</b><small>eng uzun seriya</small></div><div><b>🔥 ${st.streak}</b><small>kun ketma-ket</small></div></div>
+    ${weak.length?`<div class="note" style="text-align:left;margin-top:14px"><b>Qayta ko'rib chiqing:</b><br>${weak.map(c=>`• ${esc(c.rule)}`).join("<br>")}</div>`:""}
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="nAgain">Yana bir dars</button><button class="btn" id="nHome">Bo'limlar</button></div></div>`;
+  const m=nl.mode; nl=null;
+  $("#nAgain").onclick=()=>startLesson(m); $("#nHome").onclick=()=>renderNumbers();
+}
+document.addEventListener("keydown", e=>{
+  if(tab!=="numbers" || !nl || !nl.answered) return;
+  if(e.key==="Enter"){ e.preventDefault(); next(); }
+});
+
 /* ================= Google Drive sinxronlash ================= */
 // OAuth Client ID ochiq ma'lumot (maxfiy emas) — u faqat shu sayt manzilidan ishlaydi.
 const GOOGLE_CLIENT_ID = "523791305083-s3oju6k5qmq3ndt70fca6mfdj612p0fq.apps.googleusercontent.com";
@@ -1148,7 +1513,9 @@ function bootGoogle(){
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.toggle("on",x===b));
-  ["add","review","practice","library"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==tab));
+  ["add","review","practice","library","numbers"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==tab));
+  $("#folders").classList.toggle("hidden", tab==="numbers");
+  if(tab!=="numbers"){ nl=null; numView="home"; }
   if(tab!=="practice") pr=null;
   renderAll();
 });
@@ -1157,6 +1524,7 @@ function renderAll(){
   if(tab==="review" && (!session || !session.flipped)) renderReview();
   if(tab==="practice" && !pr) renderPractice();
   if(tab==="library") renderLibrary();
+  if(tab==="numbers" && !nl) renderNumbers();
 }
 async function init(){
   try{
