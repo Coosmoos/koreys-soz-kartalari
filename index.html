@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f5f1ea">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>단어 — Koreyscha so'z kartalari</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -29,7 +30,10 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:5px 10px;text-align:right;min-width:62px}
 .stat b{display:block;font-size:17px;line-height:1.1}
 .stat small{color:var(--muted);font-size:10.5px}
-.gear{border:1px solid var(--line);background:var(--paper);border-radius:12px;width:44px;height:44px;font-size:19px}
+.gear{border:1px solid var(--line);background:var(--paper);border-radius:12px;width:44px;height:44px;font-size:19px;position:relative;flex:none}
+.cdot{position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-radius:50%;border:2px solid var(--paper)}
+.cdot.ok{background:var(--green)}.cdot.need{background:var(--amber)}.cdot.err{background:var(--red)}
+@media (max-width:420px){.stat{min-width:0;padding:5px 8px}.brand p{display:none}}
 nav.tabs{display:flex;gap:4px;background:#ebe4d9;padding:4px;border-radius:14px;margin-bottom:12px;position:sticky;top:6px;z-index:5}
 nav.tabs button{flex:1;border:0;background:transparent;padding:10px 4px;border-radius:10px;font-weight:700;color:#5d564e;font-size:14px}
 nav.tabs button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -187,6 +191,7 @@ textarea.field{resize:vertical;min-height:54px}
     <div class="stats">
       <div class="stat"><b id="stTotal">0</b><small>so'z</small></div>
       <div class="stat"><b id="stDue" style="color:var(--red)">0</b><small>bugun</small></div>
+      <button class="gear hidden" id="cloudBtn" title="Google bilan kirish">☁️</button>
       <button class="gear" id="openSettings" title="Sozlamalar">⚙️</button>
     </div>
   </header>
@@ -278,8 +283,19 @@ let photo = null;            // {blob, url}
 let drafts = [];             // generated, not yet saved
 const settings = { key: LS.get("key",""), model: LS.get("model",""), models: LS.get("models",[]), autoImg: LS.get("autoImg", true) };
 
-async function saveCard(c){ const i = cards.findIndex(x=>x.id===c.id); if(i>=0) cards[i]=c; else cards.push(c); await idb.put(c); }
-async function saveFolders(){ await idb.set("folders", folders); }
+function imgSig(img){ let h=5381; const t=img.slice(-400); for(let i=0;i<t.length;i++) h=((h<<5)+h+t.charCodeAt(i))|0; return img.length.toString(36)+(h>>>0).toString(36); }
+function stamp(c){
+  c.mod = Date.now();
+  if(c.img && c.img.startsWith("data:")){ const sg=imgSig(c.img); if(sg!==c.imgSig){ c.imgSig=sg; c.imgName=`img-${c.id}-${sg}.jpg`; } }
+  else { c.imgSig=null; c.imgName=null; }
+  return c;
+}
+async function persist(c){ stamp(c); await idb.put(c); scheduleSync(); }
+async function persistMany(list){ list.forEach(stamp); await idb.putMany(list); scheduleSync(); }
+async function removeCard(id){ const t=(await idb.get("deleted"))||{}; t[id]=Date.now(); await idb.set("deleted",t); await idb.del(id); cards=cards.filter(x=>x.id!==id); scheduleSync(); }
+async function saveCard(c){ const i = cards.findIndex(x=>x.id===c.id); if(i>=0) cards[i]=c; else cards.push(c); await persist(c); }
+async function saveFolders(changed){ if(changed) changed.mod=Date.now(); await idb.set("folders", folders); scheduleSync(); }
+async function removeFolder(id){ const t=(await idb.get("fdeleted"))||{}; t[id]=Date.now(); await idb.set("fdeleted",t); folders=folders.filter(f=>f.id!==id); await saveFolders(); }
 
 /* ================= helpers ================= */
 function notice(m){ const n=$("#notice"); if(!m){n.classList.add("hidden");return;} n.innerHTML=m; n.classList.remove("hidden"); }
@@ -625,7 +641,7 @@ async function saveDrafts(){
       folder, created:now, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0
     });
   }
-  await idb.putMany(out); cards.push(...out);
+  await persistMany(out); cards.push(...out);
   drafts = drafts.filter(d=>!d.sel);
   status(`✓ ${out.length} ta karta «${esc(folderName(folder))}» papkasiga saqlandi.`);
   renderDrafts(); renderAll();
@@ -633,7 +649,7 @@ async function saveDrafts(){
 async function ensureFolder(){
   let id = $("#addFolder").value;
   if(id && folders.find(f=>f.id===id)) return id;
-  if(!folders.length){ folders=[{id:uid("f"), name:"Asosiy"}]; await saveFolders(); }
+  if(!folders.length){ folders=[{id:uid("f"), name:"Asosiy"}]; await saveFolders(folders[0]); }
   return folders[0].id;
 }
 
@@ -654,17 +670,17 @@ function renderFolders(){
   const ok=$("#okFolder");
   if(ok){
     const go=async()=>{ const name=$("#newFolder").value.trim(); addingFolder=false;
-      if(name){ const f={id:uid("f"),name}; folders.push(f); await saveFolders(); curFolder=f.id; LS.set("folder",curFolder); }
+      if(name){ const f={id:uid("f"),name}; folders.push(f); await saveFolders(f); curFolder=f.id; LS.set("folder",curFolder); }
       renderAll(); };
     ok.onclick=go; $("#newFolder").onkeydown=e=>{ if(e.key==="Enter") go(); if(e.key==="Escape"){addingFolder=false;renderFolders();} };
   }
   const rf=$("#renFolder"); if(rf) rf.onclick=()=>{
     const f=folders.find(x=>x.id===curFolder); rf.outerHTML=`<span class="chip add"><input id="renIn" value="${esc(f.name)}" maxlength="40"><button class="btn sm" id="renOk">OK</button></span>`;
     const inp=$("#renIn"); inp.focus(); inp.select();
-    const go=async()=>{ const v=inp.value.trim(); if(v){ f.name=v; await saveFolders(); } renderAll(); };
+    const go=async()=>{ const v=inp.value.trim(); if(v){ f.name=v; await saveFolders(f); } renderAll(); };
     $("#renOk").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
   };
-  const df=$("#delFolder"); if(df) df.onclick=async()=>{ folders=folders.filter(f=>f.id!==curFolder); await saveFolders(); curFolder="all"; renderAll(); };
+  const df=$("#delFolder"); if(df) df.onclick=async()=>{ await removeFolder(curFolder); curFolder="all"; renderAll(); };
 
   const sel=$("#addFolder"), keep=sel.value;
   sel.innerHTML = folders.length ? folders.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("") : `<option value="">Asosiy</option>`;
@@ -759,7 +775,7 @@ async function rate(c,g){
   const {_in, ...upd}=schedule(c,g); Object.assign(c,upd);
   session.done++; if(_in<=20*MIN) session.queue.push(c.id);
   next(); renderFolders();
-  try{ await idb.put(c); }catch(e){ notice("Natijani saqlab bo'lmadi."); }
+  try{ await persist(c); }catch(e){ notice("Natijani saqlab bo'lmadi."); }
 }
 document.addEventListener("keydown", e=>{
   if(tab!=="review"||!session||!session.cur||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
@@ -829,7 +845,7 @@ function renderPractice(){
   });
   $("#nextQ").onclick=()=>{pr.i++;pr.answered=false;renderPractice();};
 }
-async function markWrong(c){ c.due=Date.now(); try{ await idb.put(c); }catch(e){} renderFolders(); }
+async function markWrong(c){ c.due=Date.now(); try{ await persist(c); }catch(e){} renderFolders(); }
 
 /* ================= library ================= */
 $("#search").oninput=renderLibrary;
@@ -885,7 +901,7 @@ function openCard(id){
   $("#resetBtn").onclick=async()=>{ Object.assign(c,{due:Date.now(),reps:0,interval:0,last:0}); await saveCard(c); closeModal(); renderAll(); };
   $("#delBtn").onclick=async()=>{
     const b=$("#delBtn"); if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Rostdan o'chirilsinmi?"; return; }
-    await idb.del(c.id); cards=cards.filter(x=>x.id!==c.id); closeModal(); renderAll();
+    await removeCard(c.id); closeModal(); renderAll();
   };
 }
 function closeModal(){ $("#modal").classList.remove("on"); cardImgState=null; }
@@ -893,6 +909,7 @@ $("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
 
 /* ================= settings ================= */
 $("#openSettings").onclick=()=>openSettings();
+$("#cloudBtn").onclick=()=>{ if(!GOOGLE_CLIENT_ID){ openSettings(); return; } if(tokenOk()) syncNow(); else signIn(false); };
 function openSettings(msg){
   const has=!!settings.key;
   $("#modalBox").innerHTML=`<button class="iconbtn x" id="mx">✕</button>
@@ -914,7 +931,17 @@ function openSettings(msg){
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">Bitta modelning limiti tugasa, dastur keyingisini o'zi sinab ko'radi. Bugun yuborilgan so'rovlar: ${todayCount()}</p>`:""}
     </div>
     <div class="set-sec">
-      <h4>2. Zaxira nusxa</h4>
+      <h4>2. Google hisobi bilan sinxronlash</h4>
+      ${GOOGLE_CLIENT_ID ? (LS.get("gsign",false)
+        ? `<p class="muted" style="font-size:13px;margin:0 0 8px">So'zlaringiz Google Drive'ingizdagi faqat shu dastur ko'radigan yashirin papkada saqlanadi va barcha qurilmalarda bir xil bo'ladi. Dastur Drive'dagi boshqa fayllaringizni ko'ra olmaydi.</p>
+           <div class="row"><button class="btn sm blue" id="gSync">↻ Hozir sinxronlash</button><button class="btn sm" id="gOut">Chiqish</button></div>
+           <div class="status" id="syncStatus"></div>`
+        : `<p class="muted" style="font-size:13px;margin:0 0 8px">Google hisobingiz bilan kirsangiz, so'zlar va Gemini kaliti telefon va kompyuterda avtomatik bir xil bo'ladi. Dastur faqat Drive'dagi o'zining yashirin papkasini ko'radi, boshqa fayllaringizga kira olmaydi.</p>
+           <button class="btn blue" id="gIn">Google bilan kirish</button>`)
+      : `<p class="muted" style="font-size:13px;margin:0">Google sinxronlash hali sozlanmagan.</p>`}
+    </div>
+    <div class="set-sec">
+      <h4>3. Zaxira nusxa</h4>
       <p class="muted" style="font-size:13px;margin:0 0 8px">Kartalar shu qurilmada saqlanadi. Boshqa qurilmaga o'tkazish yoki yo'qolmasligi uchun faylga saqlab qo'ying.</p>
       <div class="row"><button class="btn sm" id="expBtn">⬇️ Faylga saqlash</button><button class="btn sm" id="impBtn">⬆️ Fayldan tiklash</button></div>
       <div class="status" id="bkStatus"></div>
@@ -926,11 +953,15 @@ function openSettings(msg){
     const s=$("#keyStatus"); s.className="status"; s.innerHTML='<span class="spinner"></span> Tekshirilmoqda…';
     try{
       const models=await listModels(k);
-      settings.key=k; LS.set("key",k);
+      settings.key=k; LS.set("key",k); LS.set("keyMod",Date.now()); scheduleSync();
       if(models.length){ settings.models=models; LS.set("models",models); if(!models.includes(settings.model)){ settings.model=models[0]; LS.set("model",settings.model);} }
       notice(""); openSettings(`<span style="color:var(--green)">✓ Kalit ishlayapti. Endi so'z qo'shishingiz mumkin.</span>`);
     }catch(e){ s.className="status err"; s.textContent="Kalit ishlamadi: "+(e.message||""); }
   };
+  const gi=$("#gIn"); if(gi) gi.onclick=()=>{ signIn(false); closeModal(); };
+  const gs=$("#gSync"); if(gs) gs.onclick=()=>{ tokenOk() ? syncNow() : signIn(false); };
+  const go=$("#gOut"); if(go) go.onclick=()=>{ signOut(); openSettings(); };
+  cloudState(cloud);
   const ms=$("#modelSel"); if(ms) ms.onchange=()=>{ settings.model=ms.value; LS.set("model",ms.value); };
   $("#expBtn").onclick=async()=>{
     const data={app:"danEo-cards", v:1, exported:new Date().toISOString(), folders, cards};
@@ -945,14 +976,173 @@ $("#importIn").onchange=async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
   try{
     const d=JSON.parse(await f.text()); if(!Array.isArray(d.cards)) throw 0;
-    for(const fo of (d.folders||[])) if(!folders.find(x=>x.id===fo.id)) folders.push(fo);
+    for(const fo of (d.folders||[])) if(!folders.find(x=>x.id===fo.id)) folders.push({...fo, mod:Date.now()});
     await saveFolders();
     const ids=new Set(cards.map(c=>c.id)); const add=d.cards.filter(c=>c&&c.id&&c.ko);
-    await idb.putMany(add);
+    await persistMany(add);
     add.forEach(c=>{ if(ids.has(c.id)) cards[cards.findIndex(x=>x.id===c.id)]=c; else cards.push(c); });
     renderAll(); const s=$("#bkStatus"); if(s) s.textContent=`✓ ${add.length} ta karta tiklandi.`;
   }catch(err){ const s=$("#bkStatus"); if(s){ s.className="status err"; s.textContent="Bu fayl zaxira nusxa emas."; } }
 };
+
+/* ================= Google Drive sinxronlash ================= */
+// OAuth Client ID ochiq ma'lumot (maxfiy emas) — u faqat shu sayt manzilidan ishlaydi.
+const GOOGLE_CLIENT_ID = "";
+const SCOPE = "https://www.googleapis.com/auth/drive.appdata"; // faqat dasturning yashirin papkasi
+const DRIVE = "https://www.googleapis.com/drive/v3", UPLOAD = "https://www.googleapis.com/upload/drive/v3";
+const DATA_FILE = "danEo-data.json";
+let gToken=null, gExp=0, tokenClient=null, syncing=false, syncAgain=false, syncTimer=null, cloud="off";
+const tokenOk = () => gToken && Date.now() < gExp;
+
+function cloudState(st, msg){
+  cloud = st;
+  const b = $("#cloudBtn"); if(!b) return;
+  b.classList.toggle("hidden", !GOOGLE_CLIENT_ID);
+  const map = {off:["☁️","Google bilan kirish"], sync:['<span class="spinner"></span>',"Sinxronlanmoqda…"], ok:["☁️<i class='cdot ok'></i>","Sinxronlangan"], need:["☁️<i class='cdot need'></i>","Sinxronlash uchun bosing"], err:["☁️<i class='cdot err'></i>", msg||"Sinxronlashda xato"]};
+  const [h,t] = map[st]||map.off; b.innerHTML=h; b.title=t;
+  const s = $("#syncStatus"); if(s) s.textContent = t + (st==="ok" && LS.get("lastSync",0) ? " · "+new Date(LS.get("lastSync",0)).toLocaleTimeString() : "");
+}
+function initGis(){
+  if(tokenClient || !GOOGLE_CLIENT_ID || !(window.google && google.accounts && google.accounts.oauth2)) return !!tokenClient;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID, scope: SCOPE,
+    callback: r => {
+      if(r.error){ cloudState(LS.get("gsign",false)?"need":"off"); return; }
+      gToken = r.access_token; gExp = Date.now() + (Number(r.expires_in||3600)-120)*1000;
+      LS.set("gsign", true); syncNow();
+    },
+    error_callback: () => cloudState(LS.get("gsign",false)?"need":"off")
+  });
+  return true;
+}
+function signIn(silent){
+  if(!initGis()){ cloudState("err","Google xizmati yuklanmadi"); return; }
+  tokenClient.requestAccessToken({prompt: silent ? "none" : (LS.get("gsign",false) ? "" : "consent")});
+}
+function signOut(){
+  try{ if(gToken) google.accounts.oauth2.revoke(gToken, ()=>{}); }catch(e){}
+  gToken=null; gExp=0; LS.set("gsign", false); cloudState("off");
+}
+function scheduleSync(){
+  if(!GOOGLE_CLIENT_ID || !LS.get("gsign",false)) return;
+  if(!tokenOk()){ cloudState("need"); return; }
+  clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500);
+}
+async function gfetch(url, opts={}){
+  const r = await fetch(url, {...opts, headers:{...(opts.headers||{}), Authorization:"Bearer "+gToken}});
+  if(r.status===401){ gToken=null; throw {code:"auth"}; }
+  if(!r.ok) throw {status:r.status, message:(await r.text()).slice(0,200)};
+  return r;
+}
+async function driveList(){
+  const out = {}; let page = "";
+  do{
+    const r = await gfetch(`${DRIVE}/files?spaces=appDataFolder&pageSize=1000&fields=nextPageToken,files(id,name)${page?"&pageToken="+encodeURIComponent(page):""}`);
+    const j = await r.json(); (j.files||[]).forEach(f=>{ out[f.name]=f.id; }); page = j.nextPageToken||"";
+  } while(page);
+  return out;
+}
+async function driveCreate(name, blob){
+  const fd = new FormData();
+  fd.append("metadata", new Blob([JSON.stringify({name, parents:["appDataFolder"]})], {type:"application/json"}));
+  fd.append("file", blob);
+  const r = await gfetch(`${UPLOAD}/files?uploadType=multipart&fields=id`, {method:"POST", body:fd});
+  return (await r.json()).id;
+}
+const driveUpdate = (id, blob) => gfetch(`${UPLOAD}/files/${id}?uploadType=media`, {method:"PATCH", body:blob});
+const driveGet = id => gfetch(`${DRIVE}/files/${id}?alt=media`);
+const driveDel = id => gfetch(`${DRIVE}/files/${id}`, {method:"DELETE"}).catch(()=>{});
+
+function forCloud(c){ const o={...c}; if(o.img && o.img.startsWith("data:")) o.img=null; return o; }
+function mergeTomb(a={}, b={}){ const o={...a}; for(const k in b) o[k]=Math.max(o[k]||0, b[k]); return o; }
+function mergeById(local, remote, tomb){
+  const m = new Map();
+  for(const x of remote) m.set(x.id, {item:x, from:"r"});
+  for(const x of local){ const r=m.get(x.id); if(!r || (x.mod||0) >= (r.item.mod||0)) m.set(x.id, {item:x, from:"l"}); }
+  return [...m.values()].filter(v => !(tomb[v.item.id] && tomb[v.item.id] >= (v.item.mod||0)));
+}
+
+async function syncNow(){
+  if(!tokenOk()){ if(LS.get("gsign",false)) cloudState("need"); return; }
+  if(syncing){ syncAgain=true; return; }
+  syncing=true; cloudState("sync");
+  try{
+    const files = await driveList();
+    let remote = {cards:[], folders:[], deleted:{}, fdeleted:{}, settings:{}}, remoteText = "";
+    if(files[DATA_FILE]){ remoteText = await (await driveGet(files[DATA_FILE])).text(); try{ remote = {...remote, ...JSON.parse(remoteText)}; }catch(e){} }
+
+    const deleted = mergeTomb((await idb.get("deleted"))||{}, remote.deleted);
+    const fdeleted = mergeTomb((await idb.get("fdeleted"))||{}, remote.fdeleted);
+    const byLocal = new Map(cards.map(c=>[c.id,c]));
+
+    // kartalar
+    const merged = mergeById(cards, remote.cards||[], deleted);
+    const nextCards = [], changed = [];
+    for(const {item, from} of merged){
+      if(from==="l"){ nextCards.push(item); continue; }
+      const loc = byLocal.get(item.id), c = {...item};
+      if(c.imgName && loc && loc.imgName===c.imgName && loc.img) c.img = loc.img;   // rasm o'zgarmagan
+      nextCards.push(c); changed.push(c);
+    }
+    const goneIds = cards.filter(c=>!nextCards.find(n=>n.id===c.id)).map(c=>c.id);
+    // yetishmayotgan rasmlarni yuklab olish
+    for(const c of nextCards){
+      if(c.imgName && !(c.img && c.img.startsWith("data:")) && files[c.imgName]){
+        try{ c.img = await toDataURL(new Blob([await (await driveGet(files[c.imgName])).blob()], {type:"image/jpeg"})); if(!changed.includes(c)) changed.push(c); }catch(e){}
+      }
+    }
+    if(changed.length) await idb.putMany(changed);           // mod o'zgarmaydi
+    for(const id of goneIds) await idb.del(id);
+    cards = nextCards;
+    await idb.set("deleted", deleted);
+
+    // papkalar
+    folders = mergeById(folders, remote.folders||[], fdeleted).map(v=>v.item);
+    await idb.set("folders", folders); await idb.set("fdeleted", fdeleted);
+
+    // Gemini kaliti (faqat sizning Drive'ingizdagi yashirin papkada)
+    const rs = remote.settings||{};
+    if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); }
+
+    // rasmlarni yuklash
+    for(const c of cards){
+      if(c.imgName && c.img && c.img.startsWith("data:") && !files[c.imgName]){
+        const blob = await (await fetch(c.img)).blob();
+        files[c.imgName] = await driveCreate(c.imgName, blob);
+      }
+    }
+    // ma'lumot fayli
+    const data = {app:"danEo-cards", v:2, cards:cards.map(forCloud), folders, deleted, fdeleted,
+                  settings: settings.key ? {key:settings.key, keyMod:LS.get("keyMod",0)} : (rs.key?rs:{})};
+    const text = JSON.stringify(data);
+    if(text !== remoteText){
+      const blob = new Blob([text], {type:"application/json"});
+      if(files[DATA_FILE]) await driveUpdate(files[DATA_FILE], blob); else await driveCreate(DATA_FILE, blob);
+    }
+    // keraksiz eski rasmlarni o'chirish
+    const used = new Set(cards.map(c=>c.imgName).filter(Boolean));
+    for(const name in files) if(/^img-/.test(name) && !used.has(name)) await driveDel(files[name]);
+
+    LS.set("lastSync", Date.now()); cloudState("ok"); renderAll();
+  }catch(e){
+    if(e && e.code==="auth") cloudState("need");
+    else cloudState("err", "Sinxronlashda xato: " + (e && (e.message||e.status) || "aloqa yo'q"));
+  }finally{
+    syncing=false;
+    if(syncAgain){ syncAgain=false; setTimeout(syncNow, 500); }
+  }
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && tokenOk()) syncNow(); });
+function bootGoogle(){
+  if(!GOOGLE_CLIENT_ID){ cloudState("off"); return; }
+  cloudState(LS.get("gsign",false) ? "need" : "off");
+  let tries=0;
+  const t = setInterval(()=>{
+    tries++;
+    if(window.google && google.accounts && google.accounts.oauth2){ clearInterval(t); initGis(); if(LS.get("gsign",false)) signIn(true); }
+    else if(tries>40) clearInterval(t);
+  }, 250);
+}
 
 /* ================= tabs & init ================= */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
@@ -975,6 +1165,7 @@ async function init(){
     if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
   }catch(e){ notice("Brauzer xotirasiga ulanib bo'lmadi. Maxfiy (incognito) rejimda bo'lsangiz, oddiy oynada oching."); }
   renderAll();
+  bootGoogle();
   if(!settings.key) notice(`Boshlash uchun bepul Gemini kalitini kiriting: <a href="#" id="nk" style="color:inherit;font-weight:800">⚙️ Sozlamalarni ochish</a>`), $("#nk") && ($("#nk").onclick=e=>{e.preventDefault();openSettings();});
 }
 init();
