@@ -41,8 +41,33 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .cdot.ok{background:var(--green)}.cdot.need{background:var(--amber)}.cdot.err{background:var(--red)}
 @media (max-width:420px){.stat{min-width:0;padding:5px 8px}.brand p{display:none}}
 nav.tabs{display:flex;gap:4px;background:#ebe4d9;padding:4px;border-radius:14px;margin-bottom:12px;position:sticky;top:6px;z-index:5}
-nav.tabs button{flex:1;border:0;background:transparent;padding:10px 2px;border-radius:10px;font-weight:700;color:#5d564e;font-size:14px;white-space:nowrap}
-@media (max-width:420px){nav.tabs button{font-size:12.5px}}
+nav.tabs button{flex:1;border:0;background:transparent;padding:7px 1px 6px;border-radius:10px;font-weight:700;color:#5d564e;font-size:12px;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;min-width:0}
+nav.tabs button i{font-style:normal;font-size:17px;line-height:1}
+@media (max-width:420px){nav.tabs button{font-size:10.5px;letter-spacing:-.01em}}
+.badge{position:absolute;top:2px;right:6px;background:var(--red);color:#fff;font-style:normal;font-size:10px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.3}
+.g-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px;background:#fff}
+.g-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.g-title{font-size:26px;font-weight:700}
+.g-ask{background:var(--blue-soft);color:#173b5c;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px}
+.g-p{font-size:14.5px;line-height:1.6;color:#2f2a25}
+.g-list{margin:4px 0 0;padding-left:20px;font-size:14.5px;line-height:1.7}
+.g-list.warn li::marker{content:"⚠️ "}
+.g-qa{border-left:3px solid var(--blue);padding:4px 0 4px 10px;margin:8px 0}
+.g-qa .q{font-weight:700;font-size:14px;margin-bottom:4px}
+.g-img{width:100%;border-radius:12px;border:1px solid var(--line);margin-top:6px}
+.g-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.g-act{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:14px}
+.g-act:disabled{opacity:.55}
+.g-act .i{font-size:22px}.g-act span:last-child{font-size:12.5px;color:var(--muted)}
+.g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}
+.g-tile{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.g-tt{font-size:18px;font-weight:700}
+.g-tm{font-size:12.5px;color:#4f4942;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.g-tile .d{font-size:11px;color:var(--muted)}
+.g-front-t{font-size:40px;font-weight:700}
+.g-front-s{font-size:21px;line-height:1.6;font-weight:500}
+.blank{display:inline-block;min-width:64px;border-bottom:3px solid var(--red);color:transparent}
+.g-ans{font-size:17px;background:var(--green-soft);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 /* sonlar */
 .num-hero{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .nh-t{font-size:18px;font-weight:800}
@@ -252,11 +277,12 @@ textarea.field{resize:vertical;min-height:54px}
   <div id="installBar" class="install-bar hidden"><img src="icons/icon-192.png" alt=""><div style="flex:1"><b>Ilova sifatida o'rnating</b><div class="muted" style="font-size:12.5px">Bosh ekranda ikonka bilan, internetsiz ham ochiladi</div></div><button class="btn sm primary" id="installBtn">O'rnatish</button><button class="iconbtn" id="installX" title="Yopish">✕</button></div>
 
   <nav class="tabs">
-    <button data-tab="add" class="on">Qo'shish</button>
-    <button data-tab="review">Takror</button>
-    <button data-tab="practice">Mashq</button>
-    <button data-tab="library">Lug'at</button>
-    <button data-tab="numbers">Sonlar</button>
+    <button data-tab="add" class="on"><i>➕</i>Qo'shish</button>
+    <button data-tab="review"><i>🔁</i>Takror</button>
+    <button data-tab="practice"><i>🎯</i>Mashq</button>
+    <button data-tab="library"><i>📚</i>Lug'at</button>
+    <button data-tab="grammar"><i>📝</i>Grammatika<em class="badge hidden" id="gBadge"></em></button>
+    <button data-tab="numbers"><i>🔢</i>Sonlar</button>
   </nav>
 
   <div class="folders" id="folders"></div>
@@ -285,6 +311,7 @@ textarea.field{resize:vertical;min-height:54px}
 
   <section id="tab-review" class="hidden"></section>
   <section id="tab-practice" class="hidden"></section>
+  <section id="tab-grammar" class="hidden"></section>
   <section id="tab-numbers" class="hidden"></section>
   <section id="tab-library" class="hidden">
     <input id="search" class="field" placeholder="Qidirish: koreyscha yoki o'zbekcha…">
@@ -307,8 +334,11 @@ const MIN=60e3, HOUR=3600e3, DAY=86400e3;
 const idb = (() => {
   let p;
   const open = () => p ||= new Promise((res, rej) => {
-    const r = indexedDB.open("danEo-cards", 1);
-    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore("cards", {keyPath:"id"}); d.createObjectStore("kv"); };
+    const r = indexedDB.open("danEo-cards", 2);
+    r.onupgradeneeded = () => { const d = r.result;
+      if(!d.objectStoreNames.contains("cards")) d.createObjectStore("cards", {keyPath:"id"});
+      if(!d.objectStoreNames.contains("kv")) d.createObjectStore("kv");
+      if(!d.objectStoreNames.contains("grammar")) d.createObjectStore("grammar", {keyPath:"id"}); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
   const run = async (store, mode, fn) => {
@@ -324,6 +354,10 @@ const idb = (() => {
     put: c => run("cards","readwrite", s => s.put(c)),
     putMany: list => run("cards","readwrite", s => { list.forEach(c => s.put(c)); return null; }),
     del: id => run("cards","readwrite", s => s.delete(id)),
+    gAll: () => run("grammar","readonly", s => s.getAll()),
+    gPut: g => run("grammar","readwrite", s => s.put(g)),
+    gPutMany: list => run("grammar","readwrite", s => { list.forEach(g => s.put(g)); return null; }),
+    gDel: id => run("grammar","readwrite", s => s.delete(id)),
     get: k => run("kv","readonly", s => s.get(k)),
     set: (k,v) => run("kv","readwrite", s => s.put(v,k)),
   };
@@ -1106,11 +1140,11 @@ function openSettings(msg){
   cloudState(cloud);
   const ms=$("#modelSel"); if(ms) ms.onchange=()=>{ settings.model=ms.value; LS.set("model",ms.value); };
   $("#expBtn").onclick=async()=>{
-    const data={app:"danEo-cards", v:1, exported:new Date().toISOString(), folders, cards};
+    const data={app:"danEo-cards", v:2, exported:new Date().toISOString(), folders, cards, grammar:grams};
     const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`koreys-sozlar-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-    $("#bkStatus").textContent=`✓ ${cards.length} ta karta faylga saqlandi.`;
+    $("#bkStatus").textContent=`✓ ${cards.length} ta karta va ${grams.length} ta grammatika faylga saqlandi.`;
   };
   $("#impBtn").onclick=()=>$("#importIn").click();
 }
@@ -1123,9 +1157,291 @@ $("#importIn").onchange=async e=>{
     const ids=new Set(cards.map(c=>c.id)); const add=d.cards.filter(c=>c&&c.id&&c.ko);
     await persistMany(add);
     add.forEach(c=>{ if(ids.has(c.id)) cards[cards.findIndex(x=>x.id===c.id)]=c; else cards.push(c); });
-    renderAll(); const s=$("#bkStatus"); if(s) s.textContent=`✓ ${add.length} ta karta tiklandi.`;
+    const gAdd=(Array.isArray(d.grammar)?d.grammar:[]).filter(g=>g&&g.id&&g.title);
+    for(const g of gAdd) await persistGram(g);
+    renderAll(); const s=$("#bkStatus"); if(s) s.textContent=`✓ ${add.length} ta karta${gAdd.length?` va ${gAdd.length} ta grammatika`:""} tiklandi.`;
   }catch(err){ const s=$("#bkStatus"); if(s){ s.className="status err"; s.textContent="Bu fayl zaxira nusxa emas."; } }
 };
+
+/* ================= GRAMMATIKA ================= */
+let grams = [], gView = "list", gDraft = null, gPhoto = null, gSession = null, gPr = null, gOpen = null, gSearch = "";
+
+async function persistGram(g){ stamp(g); const i=grams.findIndex(x=>x.id===g.id); if(i>=0) grams[i]=g; else grams.push(g); await idb.gPut(g); scheduleSync(); }
+async function removeGram(id){ const t=(await idb.get("gdeleted"))||{}; t[id]=Date.now(); await idb.set("gdeleted",t); await idb.gDel(id); grams=grams.filter(x=>x.id!==id); scheduleSync(); }
+const gDue = () => grams.filter(g=>(g.due||0)<=Date.now());
+
+const GSCHEMA = `{
+ "title": "grammatika nomi koreyscha shaklda, masalan -(으)ㄹ 때 yoki -고 싶다",
+ "name_uz": "qisqa o'zbekcha nomi, masalan «…ganda, …gan paytda»",
+ "level": "taxminiy daraja: TOPIK 1 / TOPIK 2 / TOPIK 3 ...",
+ "meaning": "1–2 gapda asosiy ma'nosi, o'zbekcha",
+ "form": ["qanday qo'shilishi, har biri alohida qator: masalan «Undosh bilan tugagan fe'l: 먹다 → 먹을 때»", "«Unli bilan: 가다 → 갈 때»", "«ㄹ bilan: 살다 → 살 때»"],
+ "explanation": "foydalanuvchining SAVOLIGA aniq javob beradigan tushuntirish, o'zbekcha, 4–8 gap; oddiy til, kerak bo'lsa o'zbek tilidagi o'xshash qo'shimcha bilan solishtir",
+ "examples": [{"ko":"kundalik hayotdan tabiiy gap","roman":"o'qilishi","uz":"tarjimasi"}],
+ "mistakes": ["o'zbek o'quvchilari ko'p qiladigan xato va to'g'ri varianti"],
+ "compare": "o'xshash grammatikadan farqi (bo'lsa), o'zbekcha, 1–3 gap; bo'lmasa bo'sh qator",
+ "quiz": [{"sentence":"gap, grammatika o'rnida ___ bilan","base":"qavs ichida beriladigan asos so'z, masalan 가다","answer":"to'g'ri shakl, ___ o'rniga","options":["to'g'ri javob va 3 ta ishonarli noto'g'ri shakl"],"uz":"gapning tarjimasi"}]
+}`;
+async function genGrammar(topic, question, img){
+  const parts = [{text:`Sen koreys tili grammatikasini o'zbek o'quvchilarga tushuntiradigan tajribali o'qituvchisan. Faqat JSON qaytar.
+O'quvchi Koreyada o'qiydi, koreys tilini o'rganmoqda va o'zbek tilida (lotin yozuvi) so'zlashadi.
+Mavzu: ${topic ? JSON.stringify(topic) : "(yozilmagan — rasmdan aniqla)"}
+O'quvchi nimani tushunmoqchi: ${question ? JSON.stringify(question) : "(yozilmagan — umumiy tushuntir)"}
+${img ? "Ilova qilingan rasm — darslik yoki dars materialidan skrinshot. Undagi grammatika qoidasini o'qib, shu asosda tushuntir." : ""}
+Talablar: examples — 4 ta; mistakes — 2–3 ta; quiz — 4 ta, har birida options aynan 4 ta va ulardan biri answer bilan bir xil. Faqat to'g'ri, tabiiy koreys tilidan foydalan (해요체).
+Javob formati:
+${GSCHEMA}`}];
+  if(img){ const small = await shrink(img, 1400, .8); parts.push({inline_data:{mime_type:"image/jpeg", data:(await toDataURL(small)).split(",")[1]}}); }
+  const j = await gemini(parts);
+  return normGram(j);
+}
+function normGram(j){
+  const S = v => String(v||"").trim(), A = v => Array.isArray(v) ? v : [];
+  const quiz = A(j.quiz).map(q=>{
+    const answer=S(q.answer); let options=[...new Set(A(q.options).map(S).filter(Boolean))];
+    if(!options.includes(answer)) options.unshift(answer);
+    return {sentence:S(q.sentence), base:S(q.base), answer, options:options.slice(0,4), uz:S(q.uz)};
+  }).filter(q=>q.sentence.includes("___") && q.answer);
+  return { title:S(j.title)||"Grammatika", name_uz:S(j.name_uz), level:S(j.level), meaning:S(j.meaning),
+    form:A(j.form).map(S).filter(Boolean), explanation:S(j.explanation),
+    examples:A(j.examples).map(e=>({ko:S(e.ko),roman:S(e.roman),uz:S(e.uz)})).filter(e=>e.ko).slice(0,6),
+    mistakes:A(j.mistakes).map(S).filter(Boolean), compare:S(j.compare), quiz };
+}
+async function askFollowUp(g, q){
+  const brief = {title:g.title, meaning:g.meaning, form:g.form, explanation:g.explanation, examples:g.examples.slice(0,3)};
+  const j = await gemini([{text:`Sen koreys tili o'qituvchisisan. O'quvchi o'zbek tilida so'zlashadi. Faqat JSON qaytar.
+Mavzu bo'yicha avval berilgan tushuntirish: ${JSON.stringify(brief)}
+O'quvchining qo'shimcha savoli: ${JSON.stringify(q)}
+Qisqa va aniq javob ber (o'zbekcha, 2–6 gap), kerak bo'lsa 1–2 ta misol bilan.
+Format: {"answer":"…","examples":[{"ko":"…","roman":"…","uz":"…"}]}`}]);
+  return {q, a:String(j.answer||"").trim(), examples:(Array.isArray(j.examples)?j.examples:[]).slice(0,3).map(e=>({ko:String(e.ko||""),roman:String(e.roman||""),uz:String(e.uz||"")})), at:Date.now()};
+}
+
+const exHTML = list => list.map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div>${x.roman?`<div class="r">${esc(x.roman)}</div>`:""}<div class="u">${esc(x.uz)}</div></div>${spk(x.ko)}</div>`).join("");
+const para = t => esc(t).replace(/\n+/g,"<br>");
+function gramBody(g, full){
+  return `
+    <div class="g-head"><div class="g-title ko">${esc(g.title)}</div>${spk(g.title.replace(/[-()]/g,""))}</div>
+    <div>${g.name_uz?`<span class="tag">${esc(g.name_uz)}</span>`:""}${g.level?`<span class="tag h">${esc(g.level)}</span>`:""}</div>
+    ${g.topic||g.question?`<div class="g-ask">${g.topic?`<b>Mavzu:</b> ${esc(g.topic)}`:""}${g.question?`<br><b>Savolim:</b> ${esc(g.question)}`:""}</div>`:""}
+    ${g.meaning?`<div class="sec-t">Ma'nosi</div><div class="g-p">${para(g.meaning)}</div>`:""}
+    ${g.form.length?`<div class="sec-t">Qanday qo'shiladi</div><ul class="g-list ko">${g.form.map(f=>`<li>${esc(f)}</li>`).join("")}</ul>`:""}
+    ${g.explanation?`<div class="sec-t">Tushuntirish</div><div class="g-p">${para(g.explanation)}</div>`:""}
+    ${g.examples.length?`<div class="sec-t">Misollar</div>${exHTML(g.examples)}`:""}
+    ${g.mistakes.length?`<div class="sec-t">Ko'p uchraydigan xatolar</div><ul class="g-list warn">${g.mistakes.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:""}
+    ${g.compare?`<div class="sec-t">O'xshash grammatikadan farqi</div><div class="g-p">${para(g.compare)}</div>`:""}
+    ${full && (g.qa||[]).length?`<div class="sec-t">Qo'shimcha savollarim</div>${g.qa.map(x=>`<div class="g-qa"><div class="q">❓ ${esc(x.q)}</div><div class="g-p">${para(x.a)}</div>${exHTML(x.examples||[])}</div>`).join("")}`:""}
+    ${full && g.note?`<div class="sec-t">Mening izohim</div><div class="note">${para(g.note)}</div>`:""}
+    ${full && g.img?`<div class="sec-t">Asl manba</div><img class="g-img" src="${esc(g.img)}" alt="">`:""}`;
+}
+
+function updGBadge(){ const gb=$("#gBadge"); if(gb){ const n=gDue().length; gb.textContent=n; gb.classList.toggle("hidden", !n); } }
+function renderGrammar(){
+  const el = $("#tab-grammar"); updGBadge();
+  if(gSession){ renderGReview(); return; }
+  if(gPr){ renderGPractice(); return; }
+  if(gOpen){ renderGDetail(); return; }
+  const due = gDue().length, quizN = grams.reduce((n,g)=>n+(g.quiz||[]).length,0);
+  const q = gSearch.toLowerCase();
+  const list = grams.filter(g=>!q || [g.title,g.name_uz,g.meaning,g.topic].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
+  el.innerHTML = `
+    <div class="panel">
+      <h3 style="margin:0 0 10px">Yangi mavzu</h3>
+      <input id="gTopic" class="field ko" placeholder="Mavzu: masalan -(으)ㄹ 때, -아/어서, 은/는 va 이/가" value="${esc(gDraft?gDraft._topic:"")}">
+      <textarea id="gQuestion" class="field" rows="2" style="margin-top:8px" placeholder="Nimani tushunmoqchisiz? Masalan: -아서 bilan -니까 farqi nima, qachon qaysi biri ishlatiladi?">${esc(gDraft?gDraft._question:"")}</textarea>
+      ${gPhoto?`<div class="photo-chip"><img src="${gPhoto.url}" alt=""><div style="flex:1">Skrinshot qo'shildi — qoida shu rasm asosida tushuntiriladi.</div><button class="btn sm" id="gPhotoX">✕</button></div>`:""}
+      <div class="add-actions">
+        <button class="btn" id="gPick">📷 Skrinshot (ixtiyoriy)</button>
+        <button class="btn primary" id="gMake">Tushuntirish yaratish</button>
+      </div>
+      <input type="file" id="gFile" accept="image/*" class="hidden">
+      <div class="status" id="gStatus"></div>
+      <div id="gPreview"></div>
+    </div>
+    ${grams.length?`
+    <div class="g-actions">
+      <button class="panel g-act" id="gRev" ${due?"":"disabled"}><span class="i">🔁</span><b>Takrorlash</b><span>${due?`${due} ta mavzu tayyor`:"Hozircha yo'q"}</span></button>
+      <button class="panel g-act" id="gQuiz" ${quizN?"":"disabled"}><span class="i">✍️</span><b>Mashq</b><span>Bo'sh joyni to'ldiring</span></button>
+    </div>
+    <input id="gSearchIn" class="field" style="margin-top:10px" placeholder="Qidirish…" value="${esc(gSearch)}">
+    <div class="g-grid">${list.map(g=>{
+      const d=(g.due||0)<=Date.now(), cls=!g.reps&&!g.last?"":(d?"due":"ok");
+      return `<button class="g-tile" data-g="${esc(g.id)}"><div class="g-tt ko">${esc(g.title)}</div><div class="g-tm">${esc(g.name_uz||g.meaning)}</div><div class="d"><span class="dot ${cls}"></span>${dueLabel(g)}</div></button>`;
+    }).join("")||`<div class="muted" style="padding:14px">Hech narsa topilmadi.</div>`}</div>`
+    : `<div class="panel empty" style="margin-top:10px"><div class="e">📝</div><h3>Hali grammatika yo'q</h3><p class="muted">Mavzuni yozing yoki darslikdan skrinshot yuboring — tushuntirish shu yerda saqlanadi.</p></div>`}`;
+  $("#gPick").onclick = () => $("#gFile").click();
+  $("#gFile").onchange = e => { const f=e.target.files[0]; if(!f) return; gPhoto={blob:f, url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); };
+  const px=$("#gPhotoX"); if(px) px.onclick=()=>{ gPhoto=null; keepInputs(); renderGrammar(); };
+  $("#gMake").onclick = makeGrammar;
+  const gr=$("#gRev"); if(gr) gr.onclick=()=>startGReview();
+  const gqz=$("#gQuiz"); if(gqz) gqz.onclick=()=>startGPractice();
+  const si=$("#gSearchIn"); if(si) si.oninput=()=>{ gSearch=si.value; const pos=si.selectionStart; renderGrammar(); const n=$("#gSearchIn"); n.focus(); n.setSelectionRange(pos,pos); };
+  el.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ gOpen=b.dataset.g; renderGrammar(); window.scrollTo(0,0); });
+  if(gDraft && gDraft.title) renderGPreview();
+}
+function keepInputs(){ gDraft = {...(gDraft||{}), _topic:$("#gTopic")?.value||"", _question:$("#gQuestion")?.value||""}; }
+document.addEventListener("paste", e=>{
+  if(tab!=="grammar" || gSession || gPr || gOpen) return;
+  const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
+  if(it){ e.preventDefault(); const f=it.getAsFile(); gPhoto={blob:f,url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); }
+});
+async function makeGrammar(){
+  if(!settings.key){ openSettings(); return; }
+  const topic=$("#gTopic").value.trim(), question=$("#gQuestion").value.trim();
+  if(!topic && !gPhoto){ const s=$("#gStatus"); s.className="status err"; s.textContent="Mavzuni yozing yoki skrinshot yuboring."; return; }
+  const b=$("#gMake"), s=$("#gStatus"); b.disabled=true; s.className="status"; s.innerHTML='<span class="spinner"></span> Tushuntirish tayyorlanmoqda…';
+  const t0=Date.now();
+  try{
+    const g = await genGrammar(topic, question, gPhoto && gPhoto.blob);
+    g.topic=topic; g.question=question;
+    if(gPhoto) g.img = await toDataURL(await shrink(gPhoto.blob, 1100, .78));
+    gDraft = {...g, _topic:topic, _question:question};
+    s.innerHTML = `✓ ${Math.max(1,Math.round((Date.now()-t0)/1000))} soniyada tayyor. O'qib chiqing va saqlang.`;
+    renderGPreview();
+  }catch(e){ s.className="status err"; s.innerHTML=errText(e); }
+  finally{ b.disabled=false; }
+}
+function renderGPreview(){
+  const box=$("#gPreview"); if(!box || !gDraft) return;
+  box.innerHTML = `<div class="g-card">${gramBody({...gDraft, qa:[]}, false)}
+    ${gDraft.quiz.length?`<div class="sec-t">Mashq uchun ${gDraft.quiz.length} ta savol tayyorlandi</div>`:""}
+    <div class="sec-t">Mening izohim (ixtiyoriy)</div>
+    <textarea id="gNote" class="field" rows="2" placeholder="O'zingiz uchun eslatma: o'qituvchi aytgan gap, misol…">${esc(gDraft.note||"")}</textarea>
+    <div class="row" style="margin-top:12px"><button class="btn primary" id="gSave">Saqlash</button><button class="btn" id="gRegen">Qayta yaratish</button><button class="btn" id="gCancel">Bekor qilish</button></div></div>`;
+  $("#gNote").oninput=e=>{ gDraft.note=e.target.value; };
+  $("#gCancel").onclick=()=>{ gDraft=null; gPhoto=null; renderGrammar(); };
+  $("#gRegen").onclick=makeGrammar;
+  $("#gSave").onclick=async()=>{
+    const {_topic,_question,...g} = gDraft; const now=Date.now();
+    const item = {...g, id:uid("g"), qa:[], created:now, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0};
+    await persistGram(item);
+    gDraft=null; gPhoto=null; renderGrammar();
+    const s=$("#gStatus"); if(s){ s.className="status"; s.textContent=`✓ «${item.title}» saqlandi.`; }
+  };
+}
+function renderGDetail(){
+  const g=grams.find(x=>x.id===gOpen); if(!g){ gOpen=null; renderGrammar(); return; }
+  $("#tab-grammar").innerHTML = `
+    <button class="btn sm" id="gBack">← Orqaga</button>
+    <div class="panel" style="margin-top:10px">${gramBody(g, true)}
+      <div class="sec-t">Yana savolingiz bormi?</div>
+      <div style="display:flex;gap:6px"><input id="gAsk" class="field" placeholder="Masalan: bu o'tgan zamonda qanday bo'ladi?"><button class="btn blue" id="gAskBtn">So'rash</button></div>
+      <div class="status" id="gAskSt"></div>
+      <div class="sec-t">Mening izohim</div>
+      <textarea id="gNoteEd" class="field" rows="2">${esc(g.note||"")}</textarea>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="gNoteSave">Izohni saqlash</button></div>
+      <div class="sec-t">Holati</div>
+      <div class="muted" style="font-size:13px">Keyingi takrorlash: ${dueLabel(g)} · ${g.reps||0} marta to'g'ri · ${g.lapses||0} marta unutilgan</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" id="gReset">Qaytadan o'rganish</button><span style="flex:1"></span>
+        <button class="btn sm" id="gDel" style="color:var(--red)">O'chirish</button>
+      </div>
+    </div>`;
+  $("#gBack").onclick=()=>{ gOpen=null; renderGrammar(); };
+  const ask=async()=>{
+    const q=$("#gAsk").value.trim(); if(!q) return; if(!settings.key){ openSettings(); return; }
+    const st=$("#gAskSt"); st.className="status"; st.innerHTML='<span class="spinner"></span> Javob tayyorlanmoqda…'; $("#gAskBtn").disabled=true;
+    try{ const a=await askFollowUp(g,q); g.qa=[...(g.qa||[]), a]; await persistGram(g); renderGDetail(); }
+    catch(e){ st.className="status err"; st.innerHTML=errText(e); $("#gAskBtn").disabled=false; }
+  };
+  $("#gAskBtn").onclick=ask; $("#gAsk").onkeydown=e=>{ if(e.key==="Enter") ask(); };
+  $("#gNoteSave").onclick=async()=>{ g.note=$("#gNoteEd").value.trim(); await persistGram(g); $("#gNoteSave").textContent="✓ Saqlandi"; };
+  $("#gReset").onclick=async()=>{ Object.assign(g,{due:Date.now(),reps:0,interval:0,last:0}); await persistGram(g); renderGDetail(); };
+  $("#gDel").onclick=async()=>{ const b=$("#gDel"); if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Rostdan o'chirilsinmi?"; return; } await removeGram(g.id); gOpen=null; renderGrammar(); };
+}
+
+/* takrorlash */
+function startGReview(){
+  const q = gDue().sort((a,b)=>(a.due||0)-(b.due||0)).map(g=>g.id);
+  gSession = {queue:q, done:0, cur:null, flipped:false}; nextG();
+}
+function nextG(){
+  if(!gSession.queue.length){ gSession.cur=null; renderGReview(); return; }
+  const id=gSession.queue.shift(), g=grams.find(x=>x.id===id);
+  const mode = g && (g.quiz||[]).length && Math.random()<.5 ? "quiz" : "title";
+  gSession.cur={id, mode, qi: g && g.quiz && g.quiz.length ? Math.floor(Math.random()*g.quiz.length) : 0}; gSession.flipped=false; renderGReview();
+}
+function renderGReview(){
+  const el=$("#tab-grammar");
+  if(!gSession.cur){
+    el.innerHTML=`<div class="panel empty"><div class="e">🎉</div><h3>Grammatika takrorlandi</h3><p class="muted">${gSession.done} ta mavzu ko'rib chiqildi.</p><button class="btn" id="gFin" style="margin-top:8px">Yopish</button></div>`;
+    $("#gFin").onclick=()=>{ gSession=null; renderGrammar(); }; return;
+  }
+  const g=grams.find(x=>x.id===gSession.cur.id); if(!g){ nextG(); return; }
+  const left=gSession.queue.length+1, pct=gSession.done/(gSession.done+left)*100;
+  const qz = gSession.cur.mode==="quiz" ? g.quiz[gSession.cur.qi] : null;
+  const front = qz
+    ? `<div class="dir">GAPNI TO'LDIRING</div><div class="g-front-s ko">${esc(qz.sentence).replace("___",'<span class="blank">___</span>')}</div>${qz.base?`<div class="muted ko">(${esc(qz.base)})</div>`:""}<div class="muted" style="font-size:13px">${esc(qz.uz)}</div>`
+    : `<div class="dir">QOIDANI ESLANG</div><div class="g-front-t ko">${esc(g.title)}</div><div class="muted">Ma'nosi nima va qanday qo'shiladi?</div>`;
+  const prev=[0,1,2,3].map(n=>fmtIn(schedule(g,n)._in));
+  el.innerHTML=`
+    <div class="review-top"><span>${gSession.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span></div>
+    <div class="flip ${gSession.flipped?"flipped":""}" id="gFlip"><div class="inner">
+      <div class="face front">${front}<div class="tap">Javobni ko'rish uchun bosing</div></div>
+      <div class="face back">${qz?`<div class="g-ans ko">${esc(qz.sentence).replace("___",`<b>${esc(qz.answer)}</b>`)} ${spk(qz.sentence.replace("___",qz.answer))}</div>`:""}${gramBody(g,false)}</div>
+    </div></div>
+    <div class="grades ${gSession.flipped?"":"hidden"}" id="gGrades">
+      <p>Bu qoidani eslash qanchalik oson bo'ldi?</p>
+      <div class="g"><button class="g0" data-gg="0">Eslay olmadim<small>${prev[0]}</small></button><button class="g1" data-gg="1">Qiyin<small>${prev[1]}</small></button><button class="g2" data-gg="2">Yaxshi<small>${prev[2]}</small></button><button class="g3" data-gg="3">Oson<small>${prev[3]}</small></button></div>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="gStop">Tugatish</button></div>`;
+  $("#gFlip").onclick=()=>{ if(gSession.flipped) return; gSession.flipped=true; $("#gFlip").classList.add("flipped"); $("#gGrades").classList.remove("hidden"); };
+  $("#gStop").onclick=()=>{ gSession=null; renderGrammar(); };
+  el.querySelectorAll("[data-gg]").forEach(b=>b.onclick=async()=>{
+    const {_in,...upd}=schedule(g,+b.dataset.gg); Object.assign(g,upd); gSession.done++;
+    if(_in<=20*MIN) gSession.queue.push(g.id);
+    nextG(); try{ await persistGram(g); }catch(e){} updGBadge();
+  });
+}
+
+/* mashq: bo'sh joyni to'ldirish */
+function startGPractice(){
+  const pool=[]; grams.forEach(g=>(g.quiz||[]).forEach(q=>pool.push({g,q})));
+  const e=LS.get("gErr",{});
+  const list=shuffle(pool).sort((a,b)=>(e[b.g.id]||0)-(e[a.g.id]||0)).slice(0,10);
+  gPr={list:shuffle(list), i:0, ok:0, combo:0, answered:false};
+  renderGPractice();
+}
+function renderGPractice(){
+  const el=$("#tab-grammar");
+  if(gPr.i>=gPr.list.length){
+    const pct=Math.round(gPr.ok/gPr.list.length*100);
+    el.innerHTML=`<div class="panel empty"><div class="e">${pct>=80?"🏆":"💪"}</div><h3>${gPr.ok} / ${gPr.list.length} to'g'ri</h3><p class="muted">Xato qilingan mavzular takrorlashga qo'shildi.</p>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" id="gpA">Yana mashq</button><button class="btn" id="gpB">Grammatika</button></div></div>`;
+    $("#gpA").onclick=startGPractice; $("#gpB").onclick=()=>{ gPr=null; renderGrammar(); }; return;
+  }
+  const {g,q}=gPr.list[gPr.i]; gPr.answered=false;
+  const opts=shuffle(q.options.length>=2?q.options:[q.answer]);
+  el.innerHTML=`<div class="q-wrap">
+    <div class="lesson-top"><button class="iconbtn" id="gpQ">✕</button><div class="bar" style="margin:0"><i style="width:${gPr.i/gPr.list.length*100}%"></i></div><span class="combo ${gPr.combo>=3?"hot":""}">🔥 ${gPr.combo}</span></div>
+    <div class="panel q-card">
+      <div class="q-title">Bo'sh joyga to'g'ri shaklni qo'ying</div>
+      <div class="g-front-s ko" style="margin:8px 0">${esc(q.sentence).replace("___",'<span class="blank">___</span>')}</div>
+      ${q.base?`<div class="muted ko">(${esc(q.base)})</div>`:""}<div class="muted" style="font-size:13px;margin-top:4px">${esc(q.uz)}</div>
+      <div class="optsq">${opts.map((o,i)=>`<button class="ko" data-o="${i}">${esc(o)}</button>`).join("")}</div>
+    </div><div id="gFb"></div></div>`;
+  $("#gpQ").onclick=()=>{ gPr=null; renderGrammar(); };
+  el.querySelectorAll("[data-o]").forEach(b=>b.onclick=async()=>{
+    if(gPr.answered) return; gPr.answered=true;
+    const ok=opts[+b.dataset.o]===q.answer; beep(ok);
+    el.querySelectorAll("[data-o]").forEach(x=>{ if(opts[+x.dataset.o]===q.answer) x.classList.add("right"); });
+    const e=LS.get("gErr",{});
+    if(ok){ gPr.ok++; gPr.combo++; e[g.id]=Math.max(0,(e[g.id]||0)-.5); }
+    else { b.classList.add("wrong"); gPr.combo=0; e[g.id]=(e[g.id]||0)+1; g.due=Date.now(); persistGram(g).catch(()=>{}); }
+    LS.set("gErr",e);
+    const full=q.sentence.replace("___",q.answer);
+    $("#gFb").innerHTML=`<div class="fb-bar ${ok?"ok":"no"}"><div class="fb-h">${ok?pick(["To'g'ri! 👏","Barakalla! 🎉","Zo'r! ✨"]):"Noto'g'ri"}</div>
+      <div class="fb-c ko">${esc(full)} ${spk(full)}</div>
+      <div class="fb-s">📘 <span class="ko">${esc(g.title)}</span> — ${esc(g.meaning)}</div>
+      <button class="btn ${ok?"green":"primary"}" id="gpN">Davom etish</button></div>`;
+    $("#gpN").onclick=()=>{ gPr.i++; renderGPractice(); }; $("#gpN").focus(); speak(full);
+  });
+}
+document.addEventListener("keydown", e=>{
+  if(tab!=="grammar" || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if(gSession && gSession.cur){ if(e.code==="Space"){ e.preventDefault(); $("#gFlip")?.click(); } if(gSession.flipped && ["1","2","3","4"].includes(e.key)) document.querySelector(`[data-gg="${+e.key-1}"]`)?.click(); }
+  else if(gPr && gPr.answered && e.key==="Enter"){ e.preventDefault(); $("#gpN")?.click(); }
+});
 
 /* ================= SONLAR (ikki sanoq tizimi) ================= */
 const SD = "일이삼사오육칠팔구".split("");
@@ -1529,33 +1845,35 @@ async function syncNow(){
   syncing=true; cloudState("sync");
   try{
     const files = await driveList();
-    let remote = {cards:[], folders:[], deleted:{}, fdeleted:{}, settings:{}}, remoteText = "";
+    let remote = {cards:[], grammar:[], folders:[], deleted:{}, fdeleted:{}, gdeleted:{}, settings:{}}, remoteText = "";
     if(files[DATA_FILE]){ remoteText = await (await driveGet(files[DATA_FILE])).text(); try{ remote = {...remote, ...JSON.parse(remoteText)}; }catch(e){} }
 
     const deleted = mergeTomb((await idb.get("deleted"))||{}, remote.deleted);
     const fdeleted = mergeTomb((await idb.get("fdeleted"))||{}, remote.fdeleted);
-    const byLocal = new Map(cards.map(c=>[c.id,c]));
 
-    // kartalar
-    const merged = mergeById(cards, remote.cards||[], deleted);
-    const nextCards = [], changed = [];
-    for(const {item, from} of merged){
-      if(from==="l"){ nextCards.push(item); continue; }
-      const loc = byLocal.get(item.id), c = {...item};
-      if(c.imgName && loc && loc.imgName===c.imgName && loc.img) c.img = loc.img;   // rasm o'zgarmagan
-      nextCards.push(c); changed.push(c);
-    }
-    const goneIds = cards.filter(c=>!nextCards.find(n=>n.id===c.id)).map(c=>c.id);
-    // yetishmayotgan rasmlarni yuklab olish
-    for(const c of nextCards){
-      if(c.imgName && !(c.img && c.img.startsWith("data:")) && files[c.imgName]){
-        try{ c.img = await toDataURL(new Blob([await (await driveGet(files[c.imgName])).blob()], {type:"image/jpeg"})); if(!changed.includes(c)) changed.push(c); }catch(e){}
+    // kartalar va grammatika
+    async function mergeSet(local, remoteList, tomb, put, del){
+      const byL = new Map(local.map(c=>[c.id,c]));
+      const next = [], changed = [];
+      for(const {item, from} of mergeById(local, remoteList||[], tomb)){
+        if(from==="l"){ next.push(item); continue; }
+        const loc = byL.get(item.id), c = {...item};
+        if(c.imgName && loc && loc.imgName===c.imgName && loc.img) c.img = loc.img;   // rasm o'zgarmagan
+        next.push(c); changed.push(c);
       }
+      for(const c of next){
+        if(c.imgName && !(c.img && c.img.startsWith("data:")) && files[c.imgName]){
+          try{ c.img = await toDataURL(new Blob([await (await driveGet(files[c.imgName])).blob()], {type:"image/jpeg"})); if(!changed.includes(c)) changed.push(c); }catch(e){}
+        }
+      }
+      if(changed.length) await put(changed);                 // mod o'zgarmaydi
+      for(const c of local) if(!next.find(n=>n.id===c.id)) await del(c.id);
+      return next;
     }
-    if(changed.length) await idb.putMany(changed);           // mod o'zgarmaydi
-    for(const id of goneIds) await idb.del(id);
-    cards = nextCards;
-    await idb.set("deleted", deleted);
+    const gdeleted = mergeTomb((await idb.get("gdeleted"))||{}, remote.gdeleted);
+    cards = await mergeSet(cards, remote.cards, deleted, idb.putMany, idb.del);
+    grams = await mergeSet(grams, remote.grammar, gdeleted, idb.gPutMany, idb.gDel);
+    await idb.set("deleted", deleted); await idb.set("gdeleted", gdeleted);
 
     // papkalar
     folders = mergeById(folders, remote.folders||[], fdeleted).map(v=>v.item);
@@ -1566,14 +1884,14 @@ async function syncNow(){
     if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); ensureModels(true); }
 
     // rasmlarni yuklash
-    for(const c of cards){
+    for(const c of [...cards, ...grams]){
       if(c.imgName && c.img && c.img.startsWith("data:") && !files[c.imgName]){
         const blob = await (await fetch(c.img)).blob();
         files[c.imgName] = await driveCreate(c.imgName, blob);
       }
     }
     // ma'lumot fayli
-    const data = {app:"danEo-cards", v:2, cards:cards.map(forCloud), folders, deleted, fdeleted,
+    const data = {app:"danEo-cards", v:3, cards:cards.map(forCloud), grammar:grams.map(forCloud), folders, deleted, fdeleted, gdeleted,
                   settings: settings.key ? {key:settings.key, keyMod:LS.get("keyMod",0)} : (rs.key?rs:{})};
     const text = JSON.stringify(data);
     if(text !== remoteText){
@@ -1581,7 +1899,7 @@ async function syncNow(){
       if(files[DATA_FILE]) await driveUpdate(files[DATA_FILE], blob); else await driveCreate(DATA_FILE, blob);
     }
     // keraksiz eski rasmlarni o'chirish
-    const used = new Set(cards.map(c=>c.imgName).filter(Boolean));
+    const used = new Set([...cards, ...grams].map(c=>c.imgName).filter(Boolean));
     for(const name in files) if(/^img-/.test(name) && !used.has(name)) await driveDel(files[name]);
 
     LS.set("lastSync", Date.now()); cloudState("ok"); renderAll();
@@ -1630,8 +1948,9 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.toggle("on",x===b));
-  ["add","review","practice","library","numbers"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==tab));
-  $("#folders").classList.toggle("hidden", tab==="numbers");
+  ["add","review","practice","library","grammar","numbers"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==tab));
+  $("#folders").classList.toggle("hidden", tab==="numbers" || tab==="grammar");
+  if(tab!=="grammar"){ gSession=null; gPr=null; gOpen=null; }
   if(tab!=="numbers"){ nl=null; numView="home"; }
   if(tab!=="practice") pr=null;
   renderAll();
@@ -1642,10 +1961,13 @@ function renderAll(){
   if(tab==="practice" && !pr) renderPractice();
   if(tab==="library") renderLibrary();
   if(tab==="numbers" && !nl) renderNumbers();
+  if(tab==="grammar" && !gSession && !gPr && !gOpen && !document.activeElement.closest?.("#tab-grammar")) renderGrammar();
+  updGBadge();
 }
 async function init(){
   try{
     cards = (await idb.all()) || [];
+    grams = (await idb.gAll()) || [];
     folders = (await idb.get("folders")) || [];
     if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
   }catch(e){ notice("Brauzer xotirasiga ulanib bo'lmadi. Maxfiy (incognito) rejimda bo'lsangiz, oddiy oynada oching."); }
