@@ -13,3 +13,7 @@ koreys-sozlar-*.json
 *.jpeg
 *.png
 *.heic
+
+# ilova ikonkalari yuklanishi kerak
+!icons/
+!icons/*.png
