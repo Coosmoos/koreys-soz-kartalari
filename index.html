@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f5f1ea">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="단어">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>단어 — Koreyscha so'z kartalari</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,6 +111,8 @@ textarea.field{resize:vertical;min-height:54px}
 .status.err{color:var(--red)}
 .spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
+.install-bar{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:12px;box-shadow:var(--shadow)}
+.install-bar img{width:40px;height:40px;border-radius:10px}
 .notice{background:var(--amber-soft);color:#7a5414;border-radius:12px;padding:10px 14px;font-size:13.5px;margin-bottom:12px}
 .hidden{display:none!important}
 .switch{display:flex;align-items:center;gap:10px;font-size:13.5px;cursor:pointer;user-select:none}
@@ -241,6 +249,7 @@ textarea.field{resize:vertical;min-height:54px}
   </header>
 
   <div id="notice" class="notice hidden"></div>
+  <div id="installBar" class="install-bar hidden"><img src="icons/icon-192.png" alt=""><div style="flex:1"><b>Ilova sifatida o'rnating</b><div class="muted" style="font-size:12.5px">Bosh ekranda ikonka bilan, internetsiz ham ochiladi</div></div><button class="btn sm primary" id="installBtn">O'rnatish</button><button class="iconbtn" id="installX" title="Yopish">✕</button></div>
 
   <nav class="tabs">
     <button data-tab="add" class="on">Qo'shish</button>
@@ -450,38 +459,87 @@ function modelOrder(){
   const first = settings.model && list.includes(settings.model) ? settings.model : list[0];
   return [first, ...list.filter(m=>m!==first)].slice(0,4);
 }
-async function gemini(parts, retried){
+function thinkCfg(model){
+  // Tez javob uchun modelning "o'ylash" vaqtini kamaytiramiz
+  if(/gemini-2\.5-flash(?!-lite)/.test(model)) return {thinkingBudget:0};
+  if(/gemini-([3-9]|\d{2})/.test(model)) return {thinkingLevel:"low"};
+  return null;
+}
+async function readSSE(r, onText){
+  const rd=r.body.getReader(), dec=new TextDecoder(); let buf="", text="";
+  for(;;){
+    const {done,value}=await rd.read(); if(done) break;
+    buf+=dec.decode(value,{stream:true}); let i;
+    while((i=buf.indexOf("\n"))>=0){
+      const line=buf.slice(0,i).trim(); buf=buf.slice(i+1);
+      if(!line.startsWith("data:")) continue;
+      try{ const j=JSON.parse(line.slice(5));
+        const t=((((j.candidates||[])[0]||{}).content||{}).parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
+        if(t){ text+=t; onText(text); } }catch(e){}
+    }
+  }
+  return text;
+}
+function cardStreamer(onCard){
+  // JSON to'liq kelishini kutmasdan, har bir tayyor kartani darhol ajratib oladi
+  let pos=-1;
+  return full=>{
+    if(pos<0){ const k=full.indexOf("["); if(k<0) return; pos=k+1; }
+    for(;;){
+      const st=full.indexOf("{",pos); if(st<0) return;
+      let depth=0,inStr=false,escp=false,end=-1;
+      for(let i=st;i<full.length;i++){
+        const ch=full[i];
+        if(inStr){ if(escp) escp=false; else if(ch==="\\") escp=true; else if(ch==='"') inStr=false; continue; }
+        if(ch==='"') inStr=true; else if(ch==="{") depth++; else if(ch==="}"){ depth--; if(!depth){ end=i; break; } }
+      }
+      if(end<0) return;
+      try{ onCard(JSON.parse(full.slice(st,end+1))); }catch(e){}
+      pos=end+1;
+    }
+  };
+}
+const noThink = new Set();
+async function gemini(parts, opts={}, retried){
   if(!settings.key) throw {code:"nokey"};
   await ensureModels(false);
   let lastErr, gone=false;
   const queue = modelOrder(), tried = new Set();
-  while(queue.length && tried.size < 5){
+  while(queue.length && tried.size < 6){
     const model = queue.shift(); if(tried.has(model)) continue; tried.add(model);
-    const r = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
+    const genCfg = {responseMimeType:"application/json", temperature:0.4};
+    const tc = noThink.has(model) ? null : thinkCfg(model); if(tc) genCfg.thinkingConfig = tc;
+    const stream = !!opts.onCard && !!(window.ReadableStream && window.TextDecoder);
+    const url = `${API}/models/${encodeURIComponent(model)}:${stream?"streamGenerateContent?alt=sse":"generateContent"}`;
+    const r = await fetch(url, {
       method:"POST",
       headers:{"Content-Type":"application/json","x-goog-api-key":settings.key},
-      body: JSON.stringify({contents:[{role:"user",parts}], generationConfig:{responseMimeType:"application/json", temperature:0.4}})
+      body: JSON.stringify({contents:[{role:"user",parts}], generationConfig:genCfg})
     }).catch(e=>({ok:false,status:0,json:async()=>({error:{message:"Internet aloqasi yo'q"}})}));
     bumpCounter();
-    const j = await r.json().catch(()=>({}));
     if(r.ok){
-      const text = ((((j.candidates||[])[0]||{}).content||{}).parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
+      let text="";
+      try{
+        if(stream){ const push=cardStreamer(opts.onCard); text = await readSSE(r, push); }
+        else { const j = await r.json(); text = ((((j.candidates||[])[0]||{}).content||{}).parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(""); }
+      }catch(e){ lastErr={message:"Javob uzilib qoldi"}; continue; }
       if(!text) { lastErr = {message:"Gemini bo'sh javob qaytardi"}; continue; }
-      if(settings.model !== model){ settings.model = model; LS.set("model", model); }   // ishlagan modelni eslab qolamiz
+      if(settings.model !== model){ settings.model = model; LS.set("model", model); }
       return parseJSON(text);
     }
+    const j = await r.json().catch(()=>({}));
     lastErr = {status:r.status, message:(j.error&&j.error.message)||("HTTP "+r.status)};
     if(r.status===401 || (r.status===400 && /API key/i.test(lastErr.message))) break;
-    // eskirgan model: Google tavsiya qilgan yangi modelni darhol sinaymiz
+    // model "o'ylash" sozlamasini qo'llamasa — o'sha modelni sozlamasiz qayta sinaymiz
+    if(r.status===400 && tc && /think/i.test(lastErr.message)){ noThink.add(model); tried.delete(model); queue.unshift(model); continue; }
     if(/no longer available|not found|not supported|deprecated/i.test(lastErr.message)){
       gone = true;
       const sug = (lastErr.message.match(/models\/(gemini-[\w.-]+)/g)||[]).map(x=>x.replace("models/","").replace(/\.+$/,"")).filter(x=>x!==model);
-      queue.unshift(...sug);
-      continue;
+      queue.unshift(...sug); continue;
     }
     if(![429,403,400,500,503].includes(r.status)) break;
   }
-  if(gone && !retried){ await ensureModels(true); return gemini(parts, true); }
+  if(gone && !retried){ await ensureModels(true); return gemini(parts, opts, true); }
   throw lastErr;
 }
 function parseJSON(t){
@@ -520,17 +578,17 @@ const SCHEMA = `{
 }`;
 const ROLE = `Sen tajribali koreys tili o'qituvchisisan. O'quvchi o'zbek (lotin yozuvi) tilida so'zlashadi, Koreyada o'qiydi va koreys tilini o'rganmoqda. Faqat JSON qaytar.`;
 
-async function genFromWords(words){
+async function genFromWords(words, onCard){
   const prompt = `${ROLE}
 Quyidagi so'zlarning har biri uchun bittadan flash-karta tayyorla. So'zlar koreyscha, o'zbekcha, ruscha yoki inglizcha bo'lishi mumkin — har doim koreyscha so'zni asos qilib ol. Tartibni saqla.
 So'zlar: ${JSON.stringify(words)}
 "from" maydoniga "text" yoz. Javob formati:
 ${SCHEMA}`;
-  const j = await gemini([{text:prompt}]);
+  const j = await gemini([{text:prompt}], {onCard: onCard && (x=>{ const c=normalize({cards:[x]})[0]; if(c) onCard(c); })});
   return normalize(j);
 }
-async function genFromPhoto(blob, hint){
-  const small = await shrink(blob, 1600, .85);
+async function genFromPhoto(blob, hint, onCard){
+  const small = await shrink(blob, 1400, .8);
   const b64 = (await toDataURL(small)).split(",")[1];
   const prompt = `${ROLE}
 Ilova qilingan rasmni ko'rib chiq.
@@ -539,7 +597,7 @@ Ilova qilingan rasmni ko'rib chiq.
 ${hint ? `Foydalanuvchi izohi: ${hint}` : ""}
 Har bir so'z uchun to'liq flash-karta tayyorla. Javob formati:
 ${SCHEMA}`;
-  const j = await gemini([{text:prompt},{inline_data:{mime_type:"image/jpeg", data:b64}}]);
+  const j = await gemini([{text:prompt},{inline_data:{mime_type:"image/jpeg", data:b64}}], {onCard: onCard && (x=>{ const c=normalize({cards:[x]})[0]; if(c) onCard(c); })});
   return normalize(j);
 }
 function normalize(j){
@@ -590,30 +648,36 @@ $("#makeBtn").onclick = async () => {
   if(!raw && !photo){ status("So'z yozing yoki rasm yuboring.", true); return; }
   const words = raw ? raw.split(/[\n,，、;]+/).map(s=>s.trim()).filter(Boolean).slice(0,25) : [];
   const btn = $("#makeBtn"); btn.disabled=true;
+  const old = drafts, batch = [], seen = new Set(), t0 = Date.now();
+  let ownImg = null;
+  const add = c => {
+    if(!c || seen.has(c.ko)) return; seen.add(c.ko);
+    const mine = ownImg && words.length===1 && batch.length===0;
+    const d = {...c, _id:uid("d"), sel:!dupOf(c.ko), dup:!!dupOf(c.ko), img: mine?ownImg:null, own:!!mine, imgOpts:null, imgLoading:false, stripOpen:false};
+    batch.push(d); drafts = [...batch, ...old]; renderDrafts();
+    status(`<span class="spinner"></span> ${batch.length} ta karta tayyor, davom etmoqda…`);
+    if(settings.autoImg && !d.img) autoImage(d);
+  };
   try{
-    let list, ownImg = null;
+    let list;
     if(words.length){
       status(`<span class="spinner"></span> ${words.length>1?words.length+" ta karta":"Karta"} tayyorlanmoqda…`);
-      list = await genFromWords(words);
       if(photo) ownImg = await fileToCardImg(photo.blob);
+      list = await genFromWords(words, add);
     } else {
       status(`<span class="spinner"></span> Rasm skanerlanmoqda…`);
-      list = await genFromPhoto(photo.blob, "");
-      if(list.length && list.every(x=>x.from==="object") && list.length<=2) ownImg = await fileToCardImg(photo.blob);
+      list = await genFromPhoto(photo.blob, "", add);
+      if(list.length && list.length<=2 && list.every(x=>x.from==="object")){
+        const own = await fileToCardImg(photo.blob), d = batch[0] || null;
+        if(d){ d.img=own; d.own=true; d.remote=false; d.credit=""; }
+        else ownImg = own;
+      }
     }
-    if(!list.length){ status("So'z topilmadi. Boshqa rasm yoki so'z bilan urinib ko'ring.", true); return; }
-    const fresh = list.map((c,i) => ({
-      ...c, _id:uid("d"), sel:!dupOf(c.ko), dup:!!dupOf(c.ko),
-      img: (ownImg && (words.length===1 || (!words.length && i===0))) ? ownImg : null,
-      own: !!(ownImg && (words.length===1 || (!words.length && i===0))),
-      imgOpts:null, imgLoading:false, stripOpen:false
-    }));
-    drafts = [...fresh, ...drafts];
-    status(`✓ ${fresh.length} ta karta tayyor. Tekshirib, «Saqlash»ni bosing.`);
-    $("#inWord").value=""; clearPhoto();
-    renderDrafts();
-    if(settings.autoImg) fresh.filter(d=>!d.img).forEach(d=>autoImage(d));
-  }catch(e){ status(errText(e), true); }
+    list.forEach(add);   // oqimda tushib qolganlari bo'lsa
+    if(!batch.length){ status("So'z topilmadi. Boshqa rasm yoki so'z bilan urinib ko'ring.", true); return; }
+    status(`✓ ${batch.length} ta karta ${Math.max(1,Math.round((Date.now()-t0)/1000))} soniyada tayyor. Tekshirib, «Saqlash»ni bosing.`);
+    $("#inWord").value=""; clearPhoto(); renderDrafts();
+  }catch(e){ status(batch.length ? `${batch.length} ta karta tayyorlandi, qolgani uzildi: ${errText(e)}` : errText(e), true); }
   finally{ btn.disabled=false; }
 };
 
@@ -701,16 +765,16 @@ async function saveDrafts(){
   const sel = drafts.filter(d=>d.sel); if(!sel.length) return;
   const btn=$("#dSave"); btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Saqlanmoqda…';
   const folder = await ensureFolder();
-  const now = Date.now(); const out=[];
-  for(const d of sel){
+  const now = Date.now();
+  const out = await Promise.all(sel.map(async d=>{
     let img = d.img;
     if(img && d.remote) img = await urlToCardImg(img);
-    out.push({
+    return {
       id:uid("c"), ko:d.ko, roman:d.roman, uz:d.uz, pos:d.pos, hanja:d.hanja, note:d.note, examples:d.examples,
       emoji:d.emoji, img_query:d.img_query, img:img||null, credit:d.remote?(d.credit||""):"",
       folder, created:now, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0
-    });
-  }
+    };
+  }));
   await persistMany(out); cards.push(...out);
   drafts = drafts.filter(d=>!d.sel);
   status(`✓ ${out.length} ta karta «${esc(folderName(folder))}» papkasiga saqlandi.`);
@@ -1011,7 +1075,14 @@ function openSettings(msg){
       : `<p class="muted" style="font-size:13px;margin:0">Google sinxronlash hali sozlanmagan.</p>`}
     </div>
     <div class="set-sec">
-      <h4>3. Zaxira nusxa</h4>
+      <h4>3. Ilovani telefonga o'rnatish</h4>
+      ${isStandalone() ? `<p class="muted" style="font-size:13px;margin:0">✅ Ilova o'rnatilgan va alohida oynada ishlayapti.</p>`
+        : deferredInstall ? `<button class="btn blue" id="setInstall">📲 Ilovani o'rnatish</button>`
+        : isIOS() ? `<p class="muted" style="font-size:13px;margin:0">Safari'da pastdagi <b>Ulashish</b> (⬆️) tugmasini bosing → <b>«Bosh ekranga qo'shish»</b> (Add to Home Screen).</p>`
+        : `<p class="muted" style="font-size:13px;margin:0">Chrome menyusi (⋮) → <b>«Ilovani o'rnatish»</b> yoki <b>«Bosh ekranga qo'shish»</b>.</p>`}
+    </div>
+    <div class="set-sec">
+      <h4>4. Zaxira nusxa</h4>
       <p class="muted" style="font-size:13px;margin:0 0 8px">Kartalar shu qurilmada saqlanadi. Boshqa qurilmaga o'tkazish yoki yo'qolmasligi uchun faylga saqlab qo'ying.</p>
       <div class="row"><button class="btn sm" id="expBtn">⬇️ Faylga saqlash</button><button class="btn sm" id="impBtn">⬆️ Fayldan tiklash</button></div>
       <div class="status" id="bkStatus"></div>
@@ -1028,6 +1099,7 @@ function openSettings(msg){
       notice(""); openSettings(`<span style="color:var(--green)">✓ Kalit ishlayapti. Endi so'z qo'shishingiz mumkin.</span>`);
     }catch(e){ s.className="status err"; s.textContent="Kalit ishlamadi: "+(e.message||""); }
   };
+  const si=$("#setInstall"); if(si) si.onclick=()=>{ doInstall(); closeModal(); };
   const gi=$("#gIn"); if(gi) gi.onclick=()=>{ signIn(false); closeModal(); };
   const gs=$("#gSync"); if(gs) gs.onclick=()=>{ tokenOk() ? syncNow() : signIn(false); };
   const go=$("#gOut"); if(go) go.onclick=()=>{ signOut(); openSettings(); };
@@ -1531,6 +1603,27 @@ function bootGoogle(){
     if(window.google && google.accounts && google.accounts.oauth2){ clearInterval(t); initGis(); if(LS.get("gsign",false)) signIn(true); }
     else if(tries>40) clearInterval(t);
   }, 250);
+}
+
+/* ================= ilova (PWA) ================= */
+let deferredInstall = null;
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferredInstall = e;
+  if(!LS.get("installDismissed", false) && !isStandalone()) $("#installBar").classList.remove("hidden");
+});
+window.addEventListener("appinstalled", () => { deferredInstall = null; $("#installBar").classList.add("hidden"); });
+async function doInstall(){
+  if(!deferredInstall) return;
+  deferredInstall.prompt();
+  try{ await deferredInstall.userChoice; }catch(e){}
+  deferredInstall = null; $("#installBar").classList.add("hidden");
+}
+$("#installBtn").onclick = doInstall;
+$("#installX").onclick = () => { LS.set("installDismissed", true); $("#installBar").classList.add("hidden"); };
+if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 
 /* ================= tabs & init ================= */
