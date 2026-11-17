@@ -1,0 +1,15 @@
+# maxfiy fayllar hech qachon yuklanmasin
+.env
+*.env
+*.key
+*.pem
+*secret*
+*backup*.json
+koreys-sozlar-*.json
+*.pdf
+*.docx
+*.xlsx
+*.jpg
+*.jpeg
+*.png
+*.heic
