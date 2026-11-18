@@ -53,6 +53,9 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .kbar{height:8px;background:#eee6da;border-radius:99px;overflow:hidden}.kbar i{display:block;height:100%;background:var(--green)}
 .acct-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 10px 3px 3px;font-size:12px;color:#4b453f;margin:-6px 0 10px;max-width:100%}
 .acct-chip img,.acct-box img{width:22px;height:22px;border-radius:50%}
+.acct-chip.warn{border-color:var(--amber);background:var(--amber-soft);color:#7a5414}
+.acct-chip b{font-weight:700;white-space:nowrap}
+.dev{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
 .acct-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acct-box{display:flex;align-items:center;gap:10px;background:#faf6ef;border-radius:12px;padding:10px;margin-bottom:8px}
 .acct-box img{width:36px;height:36px}.acct-ph{font-size:24px}
@@ -1170,8 +1173,8 @@ $("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
 
 /* ================= settings ================= */
 $("#openSettings").onclick=()=>openSettings();
-$("#acctChip").onclick=()=>openSettings();
-$("#cloudBtn").onclick=()=>{ if(!GOOGLE_CLIENT_ID){ openSettings(); return; } if(tokenOk() && LS.get("gEmail","")) syncNow(); else signIn(false); };
+$("#acctChip").onclick=()=>{ if(LS.get("gsign",false) && !tokenOk()) signIn(false); else openSettings(); };
+$("#cloudBtn").onclick=()=>{ if(!GOOGLE_CLIENT_ID){ openSettings(); return; } if(tokenOk()){ LS.get("gEmail","") ? syncNow() : afterToken(); } else signIn(false); };
 function openSettings(msg){
   const has=!!settings.key;
   $("#modalBox").innerHTML=`<button class="iconbtn x" id="mx">✕</button>
@@ -1198,7 +1201,8 @@ function openSettings(msg){
         ? `<p class="muted" style="font-size:13px;margin:0 0 8px">So'zlaringiz Google Drive'ingizdagi faqat shu dastur ko'radigan yashirin papkada saqlanadi va barcha qurilmalarda bir xil bo'ladi. Dastur Drive'dagi boshqa fayllaringizni ko'ra olmaydi.</p>
            <div class="acct-box">${LS.get("gPic","")?`<img src="${esc(LS.get("gPic",""))}" alt="" referrerpolicy="no-referrer">`:`<span class="acct-ph">👤</span>`}<div style="flex:1;min-width:0"><b>${esc(LS.get("gName","")||"Google hisobi")}</b><div class="muted" style="font-size:13px;overflow:hidden;text-overflow:ellipsis">${esc(LS.get("gEmail","")||"email hali aniqlanmadi — ☁️ ni bosing")}</div></div></div>
            <div class="row"><button class="btn sm blue" id="gSync">↻ Hozir sinxronlash</button><button class="btn sm" id="gSwitch">🔄 Boshqa Gmail'ga o'tish</button><button class="btn sm" id="gOut">Chiqish</button></div>
-           <div class="status" id="syncStatus"></div>`
+           <div class="status" id="syncStatus"></div>
+           ${devicesHTML()}`
         : `<p class="muted" style="font-size:13px;margin:0 0 8px">Google hisobingiz bilan kirsangiz, so'zlar va Gemini kaliti telefon va kompyuterda avtomatik bir xil bo'ladi. Dastur faqat Drive'dagi o'zining yashirin papkasini ko'radi, boshqa fayllaringizga kira olmaydi.</p>
            <button class="btn blue" id="gIn">Google bilan kirish</button>`)
       : `<p class="muted" style="font-size:13px;margin:0">Google sinxronlash hali sozlanmagan.</p>`}
@@ -2084,7 +2088,7 @@ document.addEventListener("keydown", e=>{
 const GOOGLE_CLIENT_ID = "523791305083-s3oju6k5qmq3ndt70fca6mfdj612p0fq.apps.googleusercontent.com";
 const SCOPE_APP = "https://www.googleapis.com/auth/drive.appdata"; // faqat dasturning yashirin papkasi
 const SCOPE_FILE = "https://www.googleapis.com/auth/drive.file";   // faqat shu ilova yaratgan fayllar (natijalar jadvali)
-const SCOPE = SCOPE_APP + " " + SCOPE_FILE + " openid email profile";
+const SCOPE = SCOPE_APP + " " + SCOPE_FILE;   // qo'shimcha ruxsat kerak emas: Gmail manzili Drive orqali aniqlanadi
 const DRIVE = "https://www.googleapis.com/drive/v3", UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const DATA_FILE = "danEo-data.json";
 let gToken=null, gExp=0, tokenClient=null, syncing=false, syncAgain=false, syncTimer=null, cloud="off";
@@ -2097,6 +2101,7 @@ function cloudState(st, msg){
   const map = {off:["☁️","Google bilan kirish"], sync:['<span class="spinner"></span>',"Sinxronlanmoqda…"], ok:["☁️<i class='cdot ok'></i>","Sinxronlangan"], need:["☁️<i class='cdot need'></i>","Sinxronlash uchun bosing"], err:["☁️<i class='cdot err'></i>", msg||"Sinxronlashda xato"]};
   const [h,t] = map[st]||map.off; b.innerHTML=h; b.title=t;
   const s = $("#syncStatus"); if(s) s.textContent = t + (st==="ok" && LS.get("lastSync",0) ? " · "+new Date(LS.get("lastSync",0)).toLocaleTimeString() : "");
+  if(typeof renderAccount==="function") renderAccount();
 }
 function initGis(){
   if(tokenClient || !GOOGLE_CLIENT_ID || !(window.google && google.accounts && google.accounts.oauth2)) return !!tokenClient;
@@ -2115,11 +2120,27 @@ function initGis(){
 /* --- Google hisobi: qaysi Gmail, almashtirish --- */
 const SCOPE_ID = "openid email profile";
 async function fetchUserInfo(){
-  try{ const r=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+gToken}}); if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+  // Drive "about" mavjud ruxsat bilan ishlaydi — yangi ruxsat oynasi chiqmaydi
+  try{
+    const r=await fetch("https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress,photoLink)",{headers:{Authorization:"Bearer "+gToken}});
+    if(r.ok){ const u=(await r.json()).user||{}; if(u.emailAddress) return {email:u.emailAddress, name:u.displayName||"", picture:u.photoLink||""}; }
+  }catch(e){}
+  try{ const r=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+gToken}}); if(r.ok) return await r.json(); }catch(e){}
+  return null;
 }
 function renderAccount(){
   const em=LS.get("gEmail",""), chip=$("#acctChip");
-  if(chip){ if(LS.get("gsign",false) && em){ chip.innerHTML=`${LS.get("gPic","")?`<img src="${esc(LS.get("gPic",""))}" alt="" referrerpolicy="no-referrer">`:"👤"}<span>${esc(em)}</span>`; chip.classList.remove("hidden"); } else chip.classList.add("hidden"); }
+  if(!chip) return;
+  if(!GOOGLE_CLIENT_ID || !LS.get("gsign",false)){ chip.classList.add("hidden"); return; }
+  const need = cloud==="need" || cloud==="err";
+  chip.classList.remove("hidden"); chip.classList.toggle("warn", need);
+  chip.innerHTML=`${LS.get("gPic","")?`<img src="${esc(LS.get("gPic",""))}" alt="" referrerpolicy="no-referrer">`:"👤"}<span>${esc(em||"Google hisobi")}</span>${need?`<b>· ulanish uchun bosing</b>`:cloud==="sync"?`<span class="spinner" style="width:11px;height:11px"></span>`:cloud==="ok"?`<i class="cdot ok" style="position:static;border:0"></i>`:""}`;
+}
+function devicesHTML(){
+  const d={...LS.get("devices",{})}; d[devId]={...(d[devId]||{}), name:deviceName(), at:LS.get("lastSync",0), me:true};
+  const list=Object.entries(d).sort((a,b)=>(b[1].at||0)-(a[1].at||0)).slice(0,6);
+  return `<div class="dev-list"><div class="sec-t" style="margin-top:10px">Shu hisobga ulangan qurilmalar</div>${list.map(([id,v])=>`<div class="dev"><span>${v.me?"📍 ":""}${esc(v.name||"Qurilma")}${v.me?" <b>(shu qurilma)</b>":""}</span><span class="muted">${v.at?new Date(v.at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</span></div>`).join("")}
+    <div class="muted" style="font-size:12px;margin-top:6px">Telefon yoki kompyuteringiz bu ro'yxatda bo'lmasa — u boshqa Gmail bilan kirgan. O'sha qurilmada ⚙️ → «Boshqa Gmail'ga o'tish» orqali shu hisobni tanlang.</div></div>`;
 }
 async function afterToken(){
   const info = await fetchUserInfo();
@@ -2163,7 +2184,7 @@ async function clearLocalData(){
 
 function signIn(silent){
   if(!initGis()){ cloudState("err","Google xizmati yuklanmadi"); return; }
-  tokenClient.requestAccessToken({prompt: silent ? "none" : (LS.get("gsign",false) && LS.get("gEmail","") ? "" : "consent")});
+  tokenClient.requestAccessToken({prompt: silent ? "none" : (LS.get("gsign",false) ? "" : "consent"), hint: LS.get("gEmail","") || undefined});
 }
 function signOut(){
   try{ if(gToken) google.accounts.oauth2.revoke(gToken, ()=>{}); }catch(e){}
@@ -2252,6 +2273,7 @@ async function syncNow(){
     const rs = remote.settings||{};
     // statistika (har bir qurilma o'z qismini yozadi)
     statsAll = {...(remote.stats||{})}; delete statsAll[devId]; await idb.set("statsAll", statsAll);
+    LS.set("devices", remote.devices||{});
     if((rs.sheetMod||0) > LS.get("sheetMod",0)){ LS.set("sheetId", rs.sheetId||""); LS.set("sheetMod", rs.sheetMod||0); }
     if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); ensureModels(true); }
 
@@ -2265,6 +2287,7 @@ async function syncNow(){
     // ma'lumot fayli
     const data = {app:"danEo-cards", v:3, cards:cards.map(forCloud), grammar:grams.map(forCloud), folders, deleted, fdeleted, gdeleted,
                   stats: {...statsAll, [devId]: statDays},
+                  devices: {...(remote.devices||{}), [devId]: {name: deviceName(), at: Date.now(), words: cards.length}},
                   settings: {...(settings.key ? {key:settings.key, keyMod:LS.get("keyMod",0)} : (rs.key?{key:rs.key,keyMod:rs.keyMod}:{})), sheetId:LS.get("sheetId",""), sheetMod:LS.get("sheetMod",0)}};
     const text = JSON.stringify(data);
     if(text !== remoteText){
@@ -2295,6 +2318,22 @@ function bootGoogle(){
     if(window.google && google.accounts && google.accounts.oauth2){ clearInterval(t); initGis(); if(LS.get("gsign",false)) signIn(true); }
     else if(tries>40) clearInterval(t);
   }, 250);
+  // ulanish uzilgan bo'lsa — ekranga birinchi bosishingizda o'zi qayta ulanadi
+  let lastAuto = 0;
+  document.addEventListener("pointerup", e=>{
+    if(!LS.get("gsign",false) || tokenOk() || !tokenClient || LS.get("switching",false)) return;
+    if(e.target.closest("#cloudBtn,#acctChip,#modal")) return;
+    if(Date.now()-lastAuto < 5*MIN) return;
+    lastAuto = Date.now(); signIn(false);
+  }, true);
+  // boshqa qurilmadagi o'zgarishlarni olish uchun har 2 daqiqada tekshiradi
+  setInterval(()=>{ if(tokenOk() && document.visibilityState==="visible" && !syncing) syncNow(); }, 2*MIN);
+}
+function deviceName(){
+  const ua=navigator.userAgent;
+  const os=/Android/i.test(ua)?"Android":/iPhone|iPad/i.test(ua)?"iPhone":/Windows/i.test(ua)?"Windows":/Mac/i.test(ua)?"Mac":"Qurilma";
+  const br=/Edg\//.test(ua)?"Edge":/SamsungBrowser/.test(ua)?"Samsung":/Chrome\//.test(ua)?"Chrome":/Safari\//.test(ua)?"Safari":/Firefox/.test(ua)?"Firefox":"brauzer";
+  return `${os} · ${br}${matchMedia("(display-mode: standalone)").matches?" (ilova)":""}`;
 }
 
 /* ================= STATISTIKA va GOOGLE SHEETS ================= */
