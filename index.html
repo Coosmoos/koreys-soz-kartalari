@@ -510,7 +510,7 @@ async function ensureModels(force){
 function modelOrder(){
   const list = settings.models.length ? settings.models : ["gemini-flash-latest","gemini-flash-lite-latest","gemini-2.5-flash"];
   const first = settings.model && list.includes(settings.model) ? settings.model : list[0];
-  return [first, ...list.filter(m=>m!==first)].slice(0,4);
+  return [first, ...list.filter(m=>m!==first)].slice(0,6);
 }
 function thinkCfg(model){
   // Tez javob uchun modelning "o'ylash" vaqtini kamaytiramiz
@@ -557,8 +557,8 @@ async function gemini(parts, opts={}, retried){
   if(!settings.key) throw {code:"nokey"};
   await ensureModels(false);
   let lastErr, gone=false;
-  const queue = modelOrder(), tried = new Set();
-  while(queue.length && tried.size < 6){
+  const queue = modelOrder(), tried = new Set(), busyRetried = new Set();
+  while(queue.length && tried.size < 7){
     const model = queue.shift(); if(tried.has(model)) continue; tried.add(model);
     const genCfg = {responseMimeType:"application/json", temperature:0.4};
     const tc = noThink.has(model) ? null : thinkCfg(model); if(tc) genCfg.thinkingConfig = tc;
@@ -590,7 +590,13 @@ async function gemini(parts, opts={}, retried){
       const sug = (lastErr.message.match(/models\/(gemini-[\w.-]+)/g)||[]).map(x=>x.replace("models/","").replace(/\.+$/,"")).filter(x=>x!==model);
       queue.unshift(...sug); continue;
     }
-    if(![429,403,400,500,503].includes(r.status)) break;
+    // server band (high demand): shu modelni 2 soniyadan keyin bir marta qayta sinaymiz, keyin boshqasiga o'tamiz
+    if([500,502,503,504].includes(r.status) || /high demand|overloaded|unavailable|try again later/i.test(lastErr.message)){
+      lastErr.code = "busy";
+      if(!busyRetried.has(model)){ busyRetried.add(model); await new Promise(res=>setTimeout(res, 2000)); tried.delete(model); queue.unshift(model); }
+      continue;
+    }
+    if(![429,403,400].includes(r.status)) break;
   }
   if(gone && !retried){ await ensureModels(true); return gemini(parts, opts, true); }
   throw lastErr;
@@ -600,8 +606,28 @@ function parseJSON(t){
   const m = String(t).match(/[\[{][\s\S]*[\]}]/); if(!m) throw {message:"Javobni o'qib bo'lmadi"};
   return JSON.parse(m[0]);
 }
+// Gemini band bo'lsa — o'zi kutib, qayta urinadi (foydalanuvchi qayta bosishi shart emas)
+async function patient(fn, statusEl, label){
+  const waits = [15, 30, 60];
+  for(let attempt=0;;attempt++){
+    try{ return await fn(); }
+    catch(e){
+      if(!(e && e.code==="busy") || attempt>=waits.length) throw e;
+      let cancelled=false;
+      for(let left=waits[attempt]; left>0; left--){
+        if(statusEl){ statusEl.className="status"; statusEl.innerHTML=`⏳ Gemini serveri hozir band. <b>${left}</b> soniyadan keyin o'zim qayta urinaman (${attempt+1}/${waits.length}). <button class="btn sm" data-cancel>Bekor qilish</button>`;
+          const cb=statusEl.querySelector("[data-cancel]"); if(cb) cb.onclick=()=>{ cancelled=true; }; }
+        await new Promise(r=>setTimeout(r,1000));
+        if(cancelled) throw {code:"cancelled"};
+      }
+      if(statusEl) statusEl.innerHTML=`<span class="spinner"></span> ${label||"Qayta urinilmoqda…"}`;
+    }
+  }
+}
 function errText(e){
   if(!e) return "Xatolik yuz berdi.";
+  if(e.code==="cancelled") return "Bekor qilindi. Yozganlaringiz saqlanib qoldi — keyinroq qayta bosing.";
+  if(e.code==="busy") return "Gemini serveri hozir juda band (Google tomonida). Yozganlaringiz saqlanib qoldi — 5–10 daqiqadan keyin qayta bosing.";
   if(e.code==="nokey") return "Avval ⚙️ Sozlamalarda Gemini kalitini kiriting.";
   if(e.status===429) return "Gemini bepul limiti hozircha tugadi. Bir daqiqadan keyin yoki ertaga qayta urinib ko'ring.";
   if(e.status===400 && /API key/i.test(e.message)) return "Gemini kaliti noto'g'ri. ⚙️ Sozlamalarda tekshiring.";
@@ -717,10 +743,10 @@ $("#makeBtn").onclick = async () => {
     if(words.length){
       status(`<span class="spinner"></span> ${words.length>1?words.length+" ta karta":"Karta"} tayyorlanmoqda…`);
       if(photo) ownImg = await fileToCardImg(photo.blob);
-      list = await genFromWords(words, add);
+      list = await patient(()=>genFromWords(words, add), $("#addStatus"), "Kartalar tayyorlanmoqda…");
     } else {
       status(`<span class="spinner"></span> Rasm skanerlanmoqda…`);
-      list = await genFromPhoto(photo.blob, "", add);
+      list = await patient(()=>genFromPhoto(photo.blob, "", add), $("#addStatus"), "Rasm skanerlanmoqda…");
       if(list.length && list.length<=2 && list.every(x=>x.from==="object")){
         const own = await fileToCardImg(photo.blob), d = batch[0] || null;
         if(d){ d.img=own; d.own=true; d.remote=false; d.credit=""; }
@@ -1348,7 +1374,7 @@ async function makeGrammar(){
   const b=$("#gMake"), s=$("#gStatus"); b.disabled=true; s.className="status"; s.innerHTML='<span class="spinner"></span> Tushuntirish tayyorlanmoqda…';
   const t0=Date.now();
   try{
-    const g = await genGrammar(topic, question, gPhoto && gPhoto.blob);
+    const g = await patient(()=>genGrammar(topic, question, gPhoto && gPhoto.blob), s, "Tushuntirish tayyorlanmoqda…");
     g.topic=topic; g.question=question;
     if(gPhoto) g.img = await toDataURL(await shrink(gPhoto.blob, 1100, .78));
     gDraft = {...g, _topic:topic, _question:question};
@@ -1397,7 +1423,7 @@ function renderGDetail(){
   const ask=async()=>{
     const q=$("#gAsk").value.trim(); if(!q) return; if(!settings.key){ openSettings(); return; }
     const st=$("#gAskSt"); st.className="status"; st.innerHTML='<span class="spinner"></span> Javob tayyorlanmoqda…'; $("#gAskBtn").disabled=true;
-    try{ const a=await askFollowUp(g,q); g.qa=[...(g.qa||[]), a]; await persistGram(g); renderGDetail(); }
+    try{ const a=await patient(()=>askFollowUp(g,q), st, "Javob tayyorlanmoqda…"); g.qa=[...(g.qa||[]), a]; await persistGram(g); renderGDetail(); }
     catch(e){ st.className="status err"; st.innerHTML=errText(e); $("#gAskBtn").disabled=false; }
   };
   $("#gAskBtn").onclick=ask; $("#gAsk").onkeydown=e=>{ if(e.key==="Enter") ask(); };
