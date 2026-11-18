@@ -216,6 +216,8 @@ textarea.field{resize:vertical;min-height:54px}
 .word-ko{font-family:"Noto Sans KR";font-weight:700;font-size:32px;line-height:1.15}
 .roman{color:var(--muted);font-size:14px}
 .word-uz{font-size:19px;font-weight:700}
+.seg3{grid-template-columns:1fr 1fr 1fr}.seg3 button{font-size:12px;padding:8px 2px}
+.dk .w.long{font-size:18px}.word-ko.long{font-size:24px}.front .big-ko.long{font-size:32px;line-height:1.3}
 .word-en{font-size:14.5px;color:#4b5f73;margin-top:2px}
 .ex .en{font-size:12.5px;color:#4b5f73;margin-top:1px}
 .d-en{margin-top:4px;font-size:13.5px;color:#4b5f73}
@@ -333,6 +335,7 @@ textarea.field{resize:vertical;min-height:54px}
         <div style="flex:1" id="photoText"></div>
         <button class="btn sm" id="clearPhoto">✕</button>
       </div>
+      <div id="scanModes" class="seg seg3 hidden" style="margin-top:8px"><button data-sm="auto">🔎 Avtomatik</button><button data-sm="phrases">💬 Iboralar butun</button><button data-sm="words">🔤 So'zlarga ajrat</button></div>
       <div class="add-actions">
         <button class="btn" id="pickPhoto">📷 Rasm yuborish</button>
         <button class="btn primary" id="makeBtn">Karta yasash</button>
@@ -694,22 +697,33 @@ const ROLE = `Sen tajribali koreys tili o'qituvchisisan. O'quvchi o'zbek (lotin 
 
 async function genFromWords(words, onCard){
   const prompt = `${ROLE}
-Quyidagi so'zlarning har biri uchun bittadan flash-karta tayyorla. So'zlar koreyscha, o'zbekcha, ruscha yoki inglizcha bo'lishi mumkin — har doim koreyscha so'zni asos qilib ol. Tartibni saqla.
+Quyidagilarning har biri uchun bittadan flash-karta tayyorla. Ular koreyscha, o'zbekcha, ruscha yoki inglizcha bo'lishi mumkin — har doim koreyschasini asos qilib ol. Tartibni saqla.
+Agar biri ibora yoki gap bo'lsa (masalan 오른쪽으로 가세요 yoki «o'ngga yuring»), uni BUTUN holda karta qil — so'zlarga bo'lma, lug'at shakliga keltirma; "pos" — "ibora" yoki "gap", "note" — ichidagi muhim so'z va grammatika.
 So'zlar: ${JSON.stringify(words)}
 "from" maydoniga "text" yoz. Javob formati:
 ${SCHEMA}`;
   const j = await gemini([{text:prompt}], {onCard: onCard && (x=>{ const c=normalize({cards:[x]})[0]; if(c) onCard(c); })});
   return normalize(j);
 }
+const SCAN_RULES = {
+  auto: `• Avval aniqla: rasmda TAYYOR IBORALAR yoki GAPLAR bormi (masalan «오른쪽으로 가세요 — O'ngga yuring» kabi, ko'pincha tarjimasi yonida) yoki alohida so'zlar ro'yxatimi.
+• Ibora/gaplar bo'lsa — har birini BUTUN holda bitta karta qil: "ko" — rasmdagidek aynan (lug'at shakliga keltirma, so'zlarga bo'lma), "uz" — rasmdagi o'zbekcha tarjima bo'lsa aynan o'shani ol, "pos" — "ibora" yoki "gap", "note" — ichidagi muhim so'z va grammatika (masalan: 오른쪽 — o'ng tomon; -(으)로 — yo'nalish). "examples" — shu iborani ishlatgan yana 2 ta gap.
+• Alohida so'zlar bo'lsa — har birini lug'at shakliga keltir (조사larsiz, fe'llar -다 bilan), takrorlanganini bir marta ol, 은/는, 이/가 kabi yordamchilarni tashla.`,
+  words: `• Rasmdagi o'rganishga arziydigan SO'ZLARNI ajrat: har birini lug'at shakliga keltir (조사larsiz, fe'llar -다 bilan), takrorlanganini bir marta ol, 은/는, 이/가 kabi yordamchilarni tashla.`,
+  phrases: `• Rasmdagi har bir ibora yoki gapni BUTUN holda bitta karta qil: "ko" — rasmdagidek aynan (bo'lakka bo'lma, lug'at shakliga keltirma), "uz" — rasmdagi o'zbekcha tarjima bo'lsa aynan o'shani ol, "pos" — "ibora" yoki "gap", "note" — ichidagi muhim so'z va grammatika. "examples" — shu iborani ishlatgan yana 2 ta gap.`
+};
+let scanMode = LS.get("scanMode","auto");
 async function genFromPhoto(blob, hint, onCard){
   const small = await shrink(blob, 1400, .8);
   const b64 = (await toDataURL(small)).split(",")[1];
   const prompt = `${ROLE}
 Ilova qilingan rasmni ko'rib chiq.
-• Agar rasmda koreyscha matn bo'lsa (kitob sahifasi, menyu, yozuv, ekran, daftar), undagi o'rganishga arziydigan so'zlarni ajratib ol: har birini lug'at shakliga keltir (조사 va qo'shimchalarsiz, fe'llar -다 bilan), takrorlanganlarini bir marta ol, juda oddiy yordamchi so'zlarni (은/는, 이/가 kabi) tashla. Eng ko'pi 20 ta. "from": "text".
+Agar rasmda koreyscha matn bo'lsa (kitob sahifasi, slayd, video kadri, menyu, yozuv, daftar):
+${SCAN_RULES[scanMode]||SCAN_RULES.auto}
+Eng ko'pi 20 ta karta. "from": "text".
 • Agar rasmda matn bo'lmasa, rasmdagi asosiy narsa(lar)ni aniqla (1–5 ta) va ularning koreyscha nomini ber. "from": "object".
 ${hint ? `Foydalanuvchi izohi: ${hint}` : ""}
-Har bir so'z uchun to'liq flash-karta tayyorla. Javob formati:
+Har biri uchun to'liq flash-karta tayyorla. Javob formati:
 ${SCHEMA}`;
   const j = await gemini([{text:prompt},{inline_data:{mime_type:"image/jpeg", data:b64}}], {onCard: onCard && (x=>{ const c=normalize({cards:[x]})[0]; if(c) onCard(c); })});
   return normalize(j);
@@ -738,6 +752,12 @@ document.addEventListener("paste", e => {
 document.addEventListener("dragover", e => { if(tab==="add") e.preventDefault(); });
 document.addEventListener("drop", e => { if(tab!=="add") return; e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) setPhoto(f); });
 $("#inWord").addEventListener("input", updatePhotoText);
+function renderScanModes(){
+  const box=$("#scanModes"); if(!box) return;
+  box.classList.toggle("hidden", !photo || !!$("#inWord").value.trim());
+  box.querySelectorAll("[data-sm]").forEach(b=>b.classList.toggle("on", b.dataset.sm===scanMode));
+}
+document.querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{ scanMode=b.dataset.sm; LS.set("scanMode",scanMode); renderScanModes(); });
 function setPhoto(f){
   if(!f || !f.type.startsWith("image/")) return;
   if(photo) URL.revokeObjectURL(photo.url);
@@ -749,10 +769,11 @@ function updatePhotoText(){
   const w = $("#inWord").value.trim();
   $("#photoText").textContent = w ? "Bu rasm yozgan so'zingiz kartasiga qo'yiladi." : "Rasm skanerlanadi: undagi koreyscha so'zlar yoki narsalar kartaga aylanadi.";
   $("#makeBtn").textContent = w ? "Karta yasash" : "Rasmni skanerlash";
+  renderScanModes();
 }
 function clearPhoto(){
   if(photo) URL.revokeObjectURL(photo.url);
-  photo=null; $("#photoChip").classList.add("hidden"); $("#fileIn").value=""; $("#makeBtn").textContent="Karta yasash";
+  photo=null; $("#photoChip").classList.add("hidden"); renderScanModes(); $("#fileIn").value=""; $("#makeBtn").textContent="Karta yasash";
 }
 const dupOf = ko => cards.find(c=>c.ko===ko);
 
@@ -847,7 +868,7 @@ function draftHTML(d){
     <div class="ck"><input type="checkbox" data-sel="${d._id}" ${d.sel?"checked":""}></div>
     <div>${picHTML(d, d.imgLoading && !d.img)}${d.credit&&d.remote?`<div class="credit">${esc(d.credit)}</div>`:""}</div>
     <div style="min-width:0">
-      <div class="dk"><span class="w">${esc(d.ko)}</span><span class="r">${esc(d.roman)}</span>${spk(d.ko)}</div>
+      <div class="dk"><span class="w ${d.ko.length>8?"long":""}">${esc(d.ko)}</span><span class="r">${esc(d.roman)}</span>${spk(d.ko)}</div>
       <input class="field d-uz" data-uz="${d._id}" value="${esc(d.uz)}" placeholder="o'zbekcha">
       <input class="field d-uz d-en" data-en="${d._id}" value="${esc(d.en||"")}" placeholder="English">
       <div>${d.pos?`<span class="tag">${esc(d.pos)}</span>`:""}${d.hanja?`<span class="tag h">${esc(d.hanja)}</span>`:""}${d.dup?`<span class="tag dup">allaqachon bor</span>`:""}</div>
@@ -914,7 +935,8 @@ let addMode = LS.get("addMode","ai");
 function wordPrompt(){
   return `Sen koreys tili o'qituvchisisan. Men o'zbekman, Koreyada o'qiyman.
 Senga rasm (darslik sahifasi, menyu, yozuv) yoki so'zlar ro'yxatini yuboraman.
-• Rasmda koreyscha matn bo'lsa — o'rganishga arziydigan so'zlarni ajrat, lug'at shakliga keltir (조사larsiz, fe'llar -다 bilan), takrorlanganini bir marta ol, 은/는, 이/가 kabi yordamchilarni tashla. 25 tagacha.
+• Rasmda tayyor iboralar yoki gaplar bo'lsa (masalan «오른쪽으로 가세요 — O'ngga yuring») — har birini BUTUN holda bitta karta qil: so'zlarga bo'lma, lug'at shakliga keltirma; rasmdagi o'zbekcha tarjimani ol; "pos": "ibora" yoki "gap"; "note"ga ichidagi muhim so'z va grammatikani yoz.
+• Rasmda alohida so'zlar bo'lsa — lug'at shakliga keltir (조사larsiz, fe'llar -다 bilan), takrorlanganini bir marta ol, 은/는, 이/가 kabi yordamchilarni tashla. 25 tagacha.
 • Rasmda matn bo'lmasa — undagi asosiy narsalarning koreyscha nomini ber.
 • So'zlar ro'yxati bersam — har biri uchun karta tayyorla.
 
@@ -1042,7 +1064,7 @@ function next(){
 }
 function backHTML(c){
   return `${picHTML(c)}${c.credit?`<div class="credit" style="margin:-8px 0 8px">${esc(c.credit)}</div>`:""}
-    <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div class="word-ko">${esc(c.ko)}</div><div class="roman">${esc(c.roman)}</div></div>${spk(c.ko)}</div>
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div class="word-ko ${c.ko.length>8?"long":""}">${esc(c.ko)}</div><div class="roman">${esc(c.roman)}</div></div>${spk(c.ko)}</div>
     <div class="word-uz" style="margin-top:6px">${esc(c.uz)}</div>${c.en?`<div class="word-en">🇬🇧 ${esc(c.en)}</div>`:""}
     <div>${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}${c.hanja?`<span class="tag h">${esc(c.hanja)}</span>`:""}</div>
     ${c.note?`<div class="note">💡 ${esc(c.note)}</div>`:""}
@@ -1074,7 +1096,7 @@ function renderReview(){
   const left=session.queue.length+1, pct=session.done/(session.done+left)*100;
   const front = session.cur.dir==="uz"
     ? `<div class="dir">O'ZBEKCHA → KOREYSCHA</div><div class="big-uz">${esc(c.uz)}</div>${c.en?`<div class="word-en">${esc(c.en)}</div>`:""}${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}<div class="muted">Koreyschasini eslang</div>`
-    : `<div class="dir">KOREYSCHA → O'ZBEKCHA</div><div class="big-ko">${esc(c.ko)}</div>${spk(c.ko)}<div class="muted">Ma'nosini eslang</div>`;
+    : `<div class="dir">KOREYSCHA → O'ZBEKCHA</div><div class="big-ko ${c.ko.length>8?"long":""}">${esc(c.ko)}</div>${spk(c.ko)}<div class="muted">Ma'nosini eslang</div>`;
   const prev=[0,1,2,3].map(g=>fmtIn(schedule(c,g)._in));
   el.innerHTML=`
     <div class="review-top"><span>${session.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span></div>
