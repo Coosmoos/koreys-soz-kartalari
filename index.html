@@ -757,6 +757,12 @@ function clearPhoto(){
 const dupOf = ko => cards.find(c=>c.ko===ko);
 
 $("#makeBtn").onclick = async () => {
+  const raw0 = $("#inWord").value.trim();
+  if(looksJSON(raw0)){
+    let list=null; const m=raw0.match(/[\[{][\s\S]*[\]}]/);
+    try{ list=normalize(JSON.parse(m[0])); }catch(e){}
+    if(list && list.length){ const n=addDraftList(list); $("#inWord").value=""; status(`✓ ChatGPT/Gemini javobi tanildi: ${n} ta karta tayyor. Tekshirib, «Saqlash»ni bosing.`); return; }
+  }
   if(!settings.key){ openSettings(); return; }
   const raw = $("#inWord").value.trim();
   if(!raw && !photo){ status("So'z yozing yoki rasm yuboring.", true); return; }
@@ -1424,7 +1430,7 @@ function gramBody(g, full){
   return `
     <div class="g-head"><div class="g-title ko">${esc(g.title)}</div>${spk(g.title.replace(/[-()]/g,""))}</div>
     <div>${g.name_uz?`<span class="tag">${esc(g.name_uz)}</span>`:""}${g.level?`<span class="tag h">${esc(g.level)}</span>`:""}</div>
-    ${g.topic||g.question?`<div class="g-ask">${g.topic?`<b>Mavzu:</b> ${esc(g.topic)}`:""}${g.question?`<br><b>Savolim:</b> ${esc(g.question)}`:""}</div>`:""}
+    ${g.topic||(g.question&&!looksJSON(g.question))?`<div class="g-ask">${g.topic?`<b>Mavzu:</b> ${esc(g.topic)}`:""}${g.question&&!looksJSON(g.question)?`<br><b>Savolim:</b> ${esc(g.question)}`:""}</div>`:""}
     ${g.meaning?`<div class="sec-t">Ma'nosi</div><div class="g-p">${para(g.meaning)}</div>`:""}
     ${g.form.length?`<div class="sec-t">Qanday qo'shiladi</div><ul class="g-list ko">${g.form.map(f=>`<li>${esc(f)}</li>`).join("")}</ul>`:""}
     ${g.explanation?`<div class="sec-t">Tushuntirish</div><div class="g-p">${para(g.explanation)}</div>`:""}
@@ -1611,6 +1617,7 @@ function renderGrammar(){
       ${gMode==="paste" ? pastePanel()+`<div class="status" id="gStatus"></div>` : `
       <input id="gTopic" class="field ko" placeholder="Mavzu: masalan -(으)ㄹ 때, -아/어서, 은/는 va 이/가" value="${esc(gDraft?gDraft._topic:"")}">
       <textarea id="gQuestion" class="field" rows="2" style="margin-top:8px" placeholder="Nimani tushunmoqchisiz? Masalan: -아서 bilan -니까 farqi nima, qachon qaysi biri ishlatiladi?">${esc(gDraft?gDraft._question:"")}</textarea>
+      <div class="hint-s">ChatGPT yoki Gemini'dan tayyor javob olgan bo'lsangiz — yuqoridagi <b>📋 Tayyor matnni joylash</b> ni tanlang (bu yerga qo'ysangiz ham dastur taniydi).</div>
       ${gPhoto?`<div class="photo-chip"><img src="${gPhoto.url}" alt=""><div style="flex:1">Skrinshot qo'shildi — qoida shu rasm asosida tushuntiriladi.</div><button class="btn sm" id="gPhotoX">✕</button></div>`:""}
       <div class="add-actions">
         <button class="btn" id="gPick">📷 Skrinshot (ixtiyoriy)</button>
@@ -1651,9 +1658,23 @@ document.addEventListener("paste", e=>{
   const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
   if(it){ e.preventDefault(); const f=it.getAsFile(); gPhoto={blob:f,url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); }
 });
+const looksJSON = t => /[\[{][\s\S]*"(title|ko|cards|quiz|explanation)"[\s\S]*[\]}]/.test(String(t||""));
 async function makeGrammar(){
-  if(!settings.key){ openSettings(); return; }
   const topic=$("#gTopic").value.trim(), question=$("#gQuestion").value.trim();
+  // ChatGPT/Gemini javobi shu maydonlarga joylangan bo'lsa — Gemini'siz to'g'ridan-to'g'ri saqlaymiz
+  for(const txt of [question, topic]){
+    if(!looksJSON(txt)) continue;
+    const parsed=parsePastedGrammar(txt);
+    if(parsed){
+      const t = looksJSON(topic) ? "" : topic;
+      if(t && parsed.length===1 && !parsed[0].title) parsed[0].title=t;
+      await saveGramItems(parsed.map(g=>({...g, topic:t})), {source:"chatgpt"});
+      gDraft=null; gPhoto=null; renderGrammar();
+      const st=$("#gStatus"); st.className="status"; st.textContent=`✓ ChatGPT/Gemini javobi tanildi: ${parsed.length} ta mavzu saqlandi (Gemini kaliti sarflanmadi).`;
+      return;
+    }
+  }
+  if(!settings.key){ openSettings(); return; }
   if(!topic && !gPhoto){ const s=$("#gStatus"); s.className="status err"; s.textContent="Mavzuni yozing yoki skrinshot yuboring."; return; }
   const b=$("#gMake"), s=$("#gStatus"); b.disabled=true; s.className="status"; s.innerHTML='<span class="spinner"></span> Tushuntirish tayyorlanmoqda…';
   const t0=Date.now();
@@ -2615,6 +2636,8 @@ async function init(){
   try{
     cards = (await idb.all()) || [];
     grams = (await idb.gAll()) || [];
+    // eski xato: savol maydoniga joylangan JSON — tozalaymiz
+    for(const g of grams){ if(g.question && looksJSON(g.question)){ g.question=""; await persistGram(g); } }
     await loadStats();
     folders = (await idb.get("folders")) || [];
     if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
