@@ -60,6 +60,15 @@ nav.tabs button{flex:1;border:0;background:transparent;padding:7px 1px 6px;borde
 nav.tabs button i{font-style:normal;font-size:17px;line-height:1}
 @media (max-width:420px){nav.tabs button{font-size:10.5px;letter-spacing:-.01em}}
 .badge{position:absolute;top:2px;right:6px;background:var(--red);color:#fff;font-style:normal;font-size:10px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.3}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#ebe4d9;padding:4px;border-radius:12px;margin-bottom:10px}
+.seg button{border:0;background:transparent;padding:9px 4px;border-radius:9px;font-weight:700;font-size:13px;color:#5d564e}
+.seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.hint-s{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.gpt-box{margin-top:12px;background:#faf6ef;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.gpt-box summary{cursor:pointer;font-weight:700}
+.gpt-box .steps{margin:8px 0}
+.md-h{font-weight:800;margin-top:8px}.md-li{padding-left:6px}.md-gap{height:6px}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 3px}
 .g-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px;background:#fff}
 .g-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
 .g-title{font-size:26px;font-weight:700}
@@ -1300,7 +1309,7 @@ Format: {"answer":"…","examples":[{"ko":"…","roman":"…","uz":"…","en":"�
 }
 
 const exHTML = list => list.map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div>${x.roman?`<div class="r">${esc(x.roman)}</div>`:""}<div class="u">${esc(x.uz)}</div>${x.en?`<div class="en">🇬🇧 ${esc(x.en)}</div>`:""}</div>${spk(x.ko)}</div>`).join("");
-const para = t => esc(t).replace(/\n+/g,"<br>");
+const para = t => mdLite(t);
 function gramBody(g, full){
   return `
     <div class="g-head"><div class="g-title ko">${esc(g.title)}</div>${spk(g.title.replace(/[-()]/g,""))}</div>
@@ -1317,18 +1326,179 @@ function gramBody(g, full){
     ${full && g.img?`<div class="sec-t">Asl manba</div><img class="g-img" src="${esc(g.img)}" alt="">`:""}`;
 }
 
+/* --- grammatika: tayyor matnni joylashtirish va test --- */
+let gMode = LS.get("gMode","ai");
+const HANGUL = /[가-힣]/;
+function mdLite(t){
+  return String(t||"").split(/\n/).map(line=>{
+    let l=esc(line).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,'<span class="ko"><b>$1</b></span>');
+    if(/^\s*#{1,6}\s+/.test(line)) return `<div class="md-h">${l.replace(/^\s*#{1,6}\s+/,"")}</div>`;
+    if(/^\s*([-*•]|\d+[.)])\s+/.test(line)) return `<div class="md-li">• ${l.replace(/^\s*([-*•]|\d+[.)])\s+/,"")}</div>`;
+    return l ? `<div>${l}</div>` : `<div class="md-gap"></div>`;
+  }).join("");
+}
+function gVariants(title){
+  const out=new Set();
+  String(title||"").split(/[\/,·;]|\s+va\s+/).forEach(part=>{
+    let p=part.replace(/[~\-–—\s]/g,"").replace(/[A-Za-z'’.]/g,"");
+    if(!HANGUL.test(p)) return;
+    const m=p.match(/\(([^)]+)\)/);
+    if(m){ out.add(p.replace(m[0],m[1])); out.add(p.replace(m[0],"")); } else out.add(p);
+  });
+  return [...out].filter(v=>v && HANGUL.test(v)).sort((a,b)=>b.length-a.length);
+}
+function extractExamples(text){
+  const out=[];
+  for(let line of String(text||"").split(/\n/)){
+    line=line.replace(/^\s*([-*•]|\d+[.)])\s*/,"").replace(/\*\*/g,"").trim();
+    if(!HANGUL.test(line) || (line.match(/[가-힣]/g)||[]).length<4) continue;
+    const m=line.match(/^(.*?[가-힣][^A-Za-z]*?[.?!요다]?)\s*(?:—|–|→|=|:|\s-\s|\()\s*([^가-힣]{3,}?)\)?$/);
+    if(m) out.push({ko:m[1].trim(), roman:"", uz:m[2].trim(), en:""}); else if(/[.?!]$|요$|다$/.test(line)) out.push({ko:line, roman:"", uz:"", en:""});
+    if(out.length>=8) break;
+  }
+  return out;
+}
+const COMMON_GR = ["은","는","이","가","을","를","에","에서","로","으로","와","과","도","만","고","아서","어서","니까","으니까","면","으면","지만","는데","아요","어요","았어요","었어요","을 거예요","ㄹ 거예요"];
+function autoCloze(g){
+  const vars=gVariants(g.title); if(!vars.length) return [];
+  const seen=new Set((g.quiz||[]).map(q=>q.sentence)), out=[];
+  const pool=[...g.examples, ...extractExamples(g.explanation)].filter(e=>e.ko);
+  for(const ex of pool){
+    const v=vars.find(v=>ex.ko.includes(v)); if(!v) continue;
+    const sentence=ex.ko.replace(v,"___"); if(seen.has(sentence)) continue; seen.add(sentence);
+    const others=grams.filter(x=>x.id!==g.id).flatMap(x=>gVariants(x.title));
+    const opts=[v, ...vars.filter(x=>x!==v), ...shuffle(others), ...shuffle(COMMON_GR)].filter((x,i,a)=>x && a.indexOf(x)===i && !(x!==v && ex.ko.replace(v,x)===ex.ko)).slice(0,4);
+    if(opts.length<2) continue;
+    out.push({sentence, base:"", answer:v, options:opts, uz:ex.uz||ex.en||"", auto:true});
+    if(out.length>=6) break;
+  }
+  return out;
+}
+function gramQuestions(onlyId){
+  const list=grams.filter(g=>!onlyId||g.id===onlyId), qs=[];
+  const withMeaning=grams.filter(g=>g.meaning);
+  for(const g of list){
+    (g.quiz||[]).forEach(q=>qs.push({kind:"cloze", g, q}));
+    autoCloze(g).forEach(q=>qs.push({kind:"cloze", g, q}));
+    if(withMeaning.length>=3 && g.meaning){
+      const opts=shuffle([g, ...shuffle(withMeaning.filter(x=>x.id!==g.id)).slice(0,3)]);
+      qs.push({kind:"meaning", g, q:{options:opts.map(x=>x.meaning), answer:g.meaning}});
+    }
+    if(grams.length>=2){
+      const c=[...(g.quiz||[]), ...autoCloze(g)][0];
+      if(c){ const others=shuffle(grams.filter(x=>x.id!==g.id)).slice(0,3);
+        qs.push({kind:"which", g, q:{sentence:c.sentence, uz:c.uz, options:shuffle([g.title,...others.map(x=>x.title)]), answer:g.title, full:c.sentence.replace("___",c.answer)}}); }
+    }
+  }
+  return qs;
+}
+function parsePastedGrammar(text){
+  const m=String(text).match(/[\[{][\s\S]*[\]}]/); if(!m) return null;
+  let j; try{ j=JSON.parse(m[0]); }catch(e){ return null; }
+  const arr=Array.isArray(j)?j:(Array.isArray(j.topics)?j.topics:[j]);
+  const ok=arr.filter(x=>x && typeof x==="object" && (x.title||x.explanation||x.meaning));
+  return ok.length ? ok.map(normGram) : null;
+}
+function rawGrammar(title, text){
+  return {title:title||"Grammatika", name_uz:"", level:"", meaning:"", form:[], explanation:text, examples:extractExamples(text).slice(0,6), mistakes:[], compare:"", quiz:[], source:"paste"};
+}
+async function saveGramItems(items, extra={}){
+  const now=Date.now();
+  for(const [i,g] of items.entries()) await persistGram({...g, ...extra, id:uid("g"), qa:[], created:now+i, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0});
+}
+async function tidyPasted(title, text){
+  const j = await gemini([{text:`Sen koreys tili o'qituvchisisan. Faqat JSON qaytar.
+Quyida o'quvchi boshqa manbadan (kitob, o'qituvchi, ChatGPT) olgan grammatika tushuntirishi bor. Uni BIZNING FORMATGA keltir.
+Muhim: mazmunini o'zgartirma va yangi qoida qo'shma — faqat tartibla. Tushuntirishni o'zbek tilida (lotin) yoz; matndagi misollarni examples ga ko'chir (tarjimasi bo'lmasa, qo'sh). quiz ni matndagi qoida asosida tuz: 6 ta, har birida options aynan 4 ta.
+Mavzu: ${JSON.stringify(title||"")}
+Matn:
+"""${text.slice(0,12000)}"""
+Format:
+${GSCHEMA}`}]);
+  return normGram(j);
+}
+function chatgptPrompt(){
+  return `Sen koreys tili o'qituvchisisan. Men o'zbekman, Koreyada o'qiyman. Quyidagi grammatikani o'zbek tilida (lotin yozuvida) tushuntir.
+Mavzu: [BU YERGA MAVZUNI YOZING, masalan (으)로]
+Men tushunmoqchi bo'lgan narsa: [SAVOLINGIZ]
+
+Javobni FAQAT bitta JSON kod blokida ber, boshqa hech narsa yozma. Format:
+${GSCHEMA}
+Talablar: examples — 5 ta; mistakes — 2–3 ta; quiz — 6 ta, har birida options aynan 4 ta va bittasi answer bilan bir xil; gaplar tabiiy, 해요체.`;
+}
+function pastePanel(){
+  return `
+    <input id="gpTitle" class="field ko" placeholder="Mavzu nomi: masalan (으)로" value="${esc(LS.get("gpTitle",""))}">
+    <textarea id="gpText" class="field" rows="7" style="margin-top:8px" placeholder="Tushuntirishni shu yerga joylashtiring: ChatGPT javobi, kitobdan yoki o'qituvchidan olingan matn.">${esc(LS.get("gpText",""))}</textarea>
+    <div class="add-actions">
+      <button class="btn" id="gpSave">💾 Shunday saqlash</button>
+      <button class="btn primary" id="gpAI">✨ Tartiblab test tuzish</button>
+    </div>
+    <div class="hint-s">«Shunday saqlash» — Gemini'siz, matn o'zgarmaydi; testlar matndagi koreyscha gaplardan tuziladi. «Tartiblab test tuzish» — Gemini matnni o'zgartirmasdan tartiblaydi va 6 ta test savoli tuzadi (1 so'rov).</div>
+    <details class="gpt-box">
+      <summary>💡 ChatGPT Plus'dan foydalanish (Gemini sarflanmaydi)</summary>
+      <ol class="steps">
+        <li><b>Buyruqni nusxalash</b> tugmasini bosing va ChatGPT'ga joylashtiring.</li>
+        <li>[Mavzu] va [Savolingiz] o'rniga o'zingiznikini yozib yuboring.</li>
+        <li>ChatGPT bergan javobni to'liq nusxalab, yuqoridagi maydonga joylashtiring va <b>Shunday saqlash</b> ni bosing — dastur formatni o'zi taniydi, testlar ham tayyor bo'ladi.</li>
+      </ol>
+      <button class="btn sm blue" id="gpCopy">📋 Buyruqni nusxalash</button>
+      <textarea id="gpPrompt" class="field hidden" rows="4" readonly></textarea>
+    </details>`;
+}
+function wirePaste(){
+  const t=$("#gpTitle"), x=$("#gpText"), st=$("#gStatus");
+  t.oninput=()=>LS.set("gpTitle",t.value); x.oninput=()=>LS.set("gpText",x.value);
+  const done=(n,how)=>{ LS.set("gpTitle",""); LS.set("gpText",""); renderGrammar(); const s=$("#gStatus"); s.className="status"; s.textContent=`✓ ${n} ta mavzu saqlandi${how}.`; };
+  $("#gpSave").onclick=async()=>{
+    const text=x.value.trim(), title=t.value.trim();
+    if(!text){ st.className="status err"; st.textContent="Tushuntirish matnini joylashtiring."; return; }
+    const parsed=parsePastedGrammar(text);
+    if(parsed){ if(title && parsed.length===1) parsed[0].title=title; await saveGramItems(parsed,{source:"chatgpt"}); done(parsed.length," (format tanildi, testlar tayyor)"); return; }
+    if(!title){ st.className="status err"; st.textContent="Mavzu nomini yozing (masalan (으)로) — testlar shu nom bo'yicha tuziladi."; t.focus(); return; }
+    const g=rawGrammar(title,text); await saveGramItems([g]);
+    const n=autoCloze(g).length; done(1, n?`, matndan ${n} ta test savoli olindi`:". Matnda shu qo'shimchali koreyscha gap topilmadi — test uchun «Tartiblab test tuzish» dan foydalaning");
+  };
+  $("#gpAI").onclick=async()=>{
+    const text=x.value.trim(), title=t.value.trim();
+    if(!text){ st.className="status err"; st.textContent="Tushuntirish matnini joylashtiring."; return; }
+    if(!settings.key){ openSettings(); return; }
+    const b=$("#gpAI"); b.disabled=true; st.className="status"; st.innerHTML='<span class="spinner"></span> Tartiblanmoqda…';
+    try{
+      const parsed=parsePastedGrammar(text);
+      const g = parsed && parsed.length===1 && parsed[0].quiz.length ? parsed[0] : await patient(()=>tidyPasted(title,text), st, "Tartiblanmoqda…");
+      if(title) g.title=title; g.original=text.slice(0,20000);
+      await saveGramItems([g],{source:"paste"}); done(1, `, ${g.quiz.length} ta test savoli bilan`);
+    }catch(e){ st.className="status err"; st.innerHTML=errText(e)+" Matn saqlanib qoldi — «Shunday saqlash» ni bosishingiz ham mumkin."; b.disabled=false; }
+  };
+  $("#gpCopy").onclick=async()=>{
+    const p=chatgptPrompt(), ta=$("#gpPrompt");
+    try{ await navigator.clipboard.writeText(p); $("#gpCopy").textContent="✓ Nusxalandi — ChatGPT'ga joylashtiring"; }
+    catch(e){ ta.value=p; ta.classList.remove("hidden"); ta.select(); $("#gpCopy").textContent="Matnni belgilab, nusxalang"; }
+  };
+}
+async function moreQuiz(g, st){
+  const j = await gemini([{text:`Koreys grammatikasi bo'yicha 6 ta yangi test savoli tuz. Faqat JSON qaytar.
+Mavzu: ${g.title}. Ma'nosi: ${g.meaning||""}. Tushuntirish: ${(g.explanation||"").slice(0,3000)}
+Mavjud savollarni takrorlama: ${JSON.stringify((g.quiz||[]).map(q=>q.sentence))}
+Format: {"quiz":[{"sentence":"gap, grammatika o'rnida ___","base":"asos so'z","answer":"to'g'ri shakl","options":["4 ta variant, biri to'g'ri"],"uz":"o'zbekcha tarjima"}]}`}]);
+  return normGram({title:g.title, quiz:j.quiz||[]}).quiz;
+}
+
 function updGBadge(){ const gb=$("#gBadge"); if(gb){ const n=gDue().length; gb.textContent=n; gb.classList.toggle("hidden", !n); } }
 function renderGrammar(){
   const el = $("#tab-grammar"); updGBadge();
   if(gSession){ renderGReview(); return; }
   if(gPr){ renderGPractice(); return; }
   if(gOpen){ renderGDetail(); return; }
-  const due = gDue().length, quizN = grams.reduce((n,g)=>n+(g.quiz||[]).length,0);
+  const due = gDue().length, quizN = gramQuestions().length;
   const q = gSearch.toLowerCase();
   const list = grams.filter(g=>!q || [g.title,g.name_uz,g.meaning,g.topic].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
   el.innerHTML = `
     <div class="panel">
       <h3 style="margin:0 0 10px">Yangi mavzu</h3>
+      <div class="seg"><button data-gm="ai" class="${gMode==="ai"?"on":""}">✨ Gemini tushuntirsin</button><button data-gm="paste" class="${gMode==="paste"?"on":""}">📋 Tayyor matnni joylash</button></div>
+      ${gMode==="paste" ? pastePanel()+`<div class="status" id="gStatus"></div>` : `
       <input id="gTopic" class="field ko" placeholder="Mavzu: masalan -(으)ㄹ 때, -아/어서, 은/는 va 이/가" value="${esc(gDraft?gDraft._topic:"")}">
       <textarea id="gQuestion" class="field" rows="2" style="margin-top:8px" placeholder="Nimani tushunmoqchisiz? Masalan: -아서 bilan -니까 farqi nima, qachon qaysi biri ishlatiladi?">${esc(gDraft?gDraft._question:"")}</textarea>
       ${gPhoto?`<div class="photo-chip"><img src="${gPhoto.url}" alt=""><div style="flex:1">Skrinshot qo'shildi — qoida shu rasm asosida tushuntiriladi.</div><button class="btn sm" id="gPhotoX">✕</button></div>`:""}
@@ -1338,12 +1508,12 @@ function renderGrammar(){
       </div>
       <input type="file" id="gFile" accept="image/*" class="hidden">
       <div class="status" id="gStatus"></div>
-      <div id="gPreview"></div>
+      <div id="gPreview"></div>`}
     </div>
     ${grams.length?`
     <div class="g-actions">
       <button class="panel g-act" id="gRev" ${due?"":"disabled"}><span class="i">🔁</span><b>Takrorlash</b><span>${due?`${due} ta mavzu tayyor`:"Hozircha yo'q"}</span></button>
-      <button class="panel g-act" id="gQuiz" ${quizN?"":"disabled"}><span class="i">✍️</span><b>Mashq</b><span>Bo'sh joyni to'ldiring</span></button>
+      <button class="panel g-act" id="gQuiz" ${quizN?"":"disabled"}><span class="i">✍️</span><b>Test</b><span>${quizN?(quizN>10?`${quizN} ta savoldan 10 tasi`:`${quizN} ta savol`):"Savollar yo'q"}</span></button>
     </div>
     <input id="gSearchIn" class="field" style="margin-top:10px" placeholder="Qidirish…" value="${esc(gSearch)}">
     <div class="g-grid">${list.map(g=>{
@@ -1351,10 +1521,14 @@ function renderGrammar(){
       return `<button class="g-tile" data-g="${esc(g.id)}"><div class="g-tt ko">${esc(g.title)}</div><div class="g-tm">${esc(g.name_uz||g.meaning)}</div><div class="d"><span class="dot ${cls}"></span>${dueLabel(g)}</div></button>`;
     }).join("")||`<div class="muted" style="padding:14px">Hech narsa topilmadi.</div>`}</div>`
     : `<div class="panel empty" style="margin-top:10px"><div class="e">📝</div><h3>Hali grammatika yo'q</h3><p class="muted">Mavzuni yozing yoki darslikdan skrinshot yuboring — tushuntirish shu yerda saqlanadi.</p></div>`}`;
+  el.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ if(gMode==="ai") keepInputs(); gMode=b.dataset.gm; LS.set("gMode",gMode); renderGrammar(); });
+  if(gMode==="paste"){ wirePaste(); }
+  else {
   $("#gPick").onclick = () => $("#gFile").click();
   $("#gFile").onchange = e => { const f=e.target.files[0]; if(!f) return; gPhoto={blob:f, url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); };
   const px=$("#gPhotoX"); if(px) px.onclick=()=>{ gPhoto=null; keepInputs(); renderGrammar(); };
   $("#gMake").onclick = makeGrammar;
+  }
   const gr=$("#gRev"); if(gr) gr.onclick=()=>startGReview();
   const gqz=$("#gQuiz"); if(gqz) gqz.onclick=()=>startGPractice();
   const si=$("#gSearchIn"); if(si) si.oninput=()=>{ gSearch=si.value; const pos=si.selectionStart; renderGrammar(); const n=$("#gSearchIn"); n.focus(); n.setSelectionRange(pos,pos); };
@@ -1406,6 +1580,13 @@ function renderGDetail(){
   $("#tab-grammar").innerHTML = `
     <button class="btn sm" id="gBack">← Orqaga</button>
     <div class="panel" style="margin-top:10px">${gramBody(g, true)}
+      <div class="row" style="margin-top:14px">
+        <button class="btn sm primary" id="gTest" ${gramQuestions(g.id).length?"":"disabled"}>✍️ Shu mavzu bo'yicha test (${gramQuestions(g.id).length})</button>
+        <button class="btn sm" id="gMore">➕ Yana 6 ta savol</button>
+        <button class="btn sm" id="gEdit">✏️ Tahrirlash</button>
+      </div>
+      <div class="status" id="gMoreSt"></div>
+      <div id="gEditBox"></div>
       <div class="sec-t">Yana savolingiz bormi?</div>
       <div style="display:flex;gap:6px"><input id="gAsk" class="field" placeholder="Masalan: bu o'tgan zamonda qanday bo'ladi?"><button class="btn blue" id="gAskBtn">So'rash</button></div>
       <div class="status" id="gAskSt"></div>
@@ -1428,6 +1609,21 @@ function renderGDetail(){
   };
   $("#gAskBtn").onclick=ask; $("#gAsk").onkeydown=e=>{ if(e.key==="Enter") ask(); };
   $("#gNoteSave").onclick=async()=>{ g.note=$("#gNoteEd").value.trim(); await persistGram(g); $("#gNoteSave").textContent="✓ Saqlandi"; };
+  $("#gTest").onclick=()=>startGPractice(g.id);
+  $("#gMore").onclick=async()=>{
+    if(!settings.key){ openSettings(); return; }
+    const st=$("#gMoreSt"), b=$("#gMore"); b.disabled=true; st.className="status"; st.innerHTML='<span class="spinner"></span> Savollar tuzilmoqda…';
+    try{ const add=await patient(()=>moreQuiz(g, st), st, "Savollar tuzilmoqda…"); g.quiz=[...(g.quiz||[]), ...add]; await persistGram(g); renderGDetail(); }
+    catch(e){ st.className="status err"; st.innerHTML=errText(e); b.disabled=false; }
+  };
+  $("#gEdit").onclick=()=>{
+    $("#gEditBox").innerHTML=`<div class="g-card"><label class="lbl">Mavzu nomi</label><input id="eTitle" class="field ko" value="${esc(g.title)}">
+      <label class="lbl">Ma'nosi</label><textarea id="eMean" class="field" rows="2">${esc(g.meaning||"")}</textarea>
+      <label class="lbl">Tushuntirish</label><textarea id="eExpl" class="field" rows="8">${esc(g.explanation||"")}</textarea>
+      <div class="row" style="margin-top:8px"><button class="btn sm primary" id="eSave">Saqlash</button><button class="btn sm" id="eCancel">Bekor qilish</button></div></div>`;
+    $("#eCancel").onclick=()=>{ $("#gEditBox").innerHTML=""; };
+    $("#eSave").onclick=async()=>{ g.title=$("#eTitle").value.trim()||g.title; g.meaning=$("#eMean").value.trim(); g.explanation=$("#eExpl").value.trim(); await persistGram(g); renderGDetail(); };
+  };
   $("#gReset").onclick=async()=>{ Object.assign(g,{due:Date.now(),reps:0,interval:0,last:0}); await persistGram(g); renderGDetail(); };
   $("#gDel").onclick=async()=>{ const b=$("#gDel"); if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Rostdan o'chirilsinmi?"; return; } await removeGram(g.id); gOpen=null; renderGrammar(); };
 }
@@ -1478,30 +1674,33 @@ function renderGReview(){
 }
 
 /* mashq: bo'sh joyni to'ldirish */
-function startGPractice(){
-  const pool=[]; grams.forEach(g=>(g.quiz||[]).forEach(q=>pool.push({g,q})));
+function startGPractice(onlyId){
+  const pool=gramQuestions(onlyId); if(!pool.length) return;
   const e=LS.get("gErr",{});
-  const list=shuffle(pool).sort((a,b)=>(e[b.g.id]||0)-(e[a.g.id]||0)).slice(0,10);
-  gPr={list:shuffle(list), i:0, ok:0, combo:0, answered:false};
+  const list=shuffle(pool).sort((a,b)=>(e[b.g.id]||0)-(e[a.g.id]||0)).slice(0, onlyId?Math.min(10,pool.length):10);
+  gPr={list:shuffle(list), i:0, ok:0, combo:0, answered:false, only:onlyId||null}; gOpen=null;
   renderGPractice();
 }
 function renderGPractice(){
   const el=$("#tab-grammar");
   if(gPr.i>=gPr.list.length){
-    const pct=Math.round(gPr.ok/gPr.list.length*100);
+    const pct=Math.round(gPr.ok/gPr.list.length*100), only=gPr.only;
     el.innerHTML=`<div class="panel empty"><div class="e">${pct>=80?"🏆":"💪"}</div><h3>${gPr.ok} / ${gPr.list.length} to'g'ri</h3><p class="muted">Xato qilingan mavzular takrorlashga qo'shildi.</p>
-      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" id="gpA">Yana mashq</button><button class="btn" id="gpB">Grammatika</button></div></div>`;
-    $("#gpA").onclick=startGPractice; $("#gpB").onclick=()=>{ gPr=null; renderGrammar(); }; return;
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" id="gpA">Yana test</button><button class="btn" id="gpB">Grammatika</button></div></div>`;
+    $("#gpA").onclick=()=>startGPractice(only); $("#gpB").onclick=()=>{ gPr=null; renderGrammar(); }; return;
   }
-  const {g,q}=gPr.list[gPr.i]; gPr.answered=false;
+  const {g,q,kind}=gPr.list[gPr.i]; gPr.answered=false;
   const opts=shuffle(q.options.length>=2?q.options:[q.answer]);
+  const sent = s => `<div class="g-front-s ko" style="margin:8px 0">${esc(s).replace("___",'<span class="blank">___</span>')}</div>`;
+  const body = kind==="meaning"
+    ? `<div class="q-title">Bu grammatika nimani bildiradi?</div><div class="g-front-t ko" style="margin:6px 0 4px">${esc(g.title)}</div>`
+    : kind==="which"
+    ? `<div class="q-title">Bo'sh joyga qaysi grammatika mos?</div>${sent(q.sentence)}<div class="muted" style="font-size:13px">${esc(q.uz||"")}</div>`
+    : `<div class="q-title">Bo'sh joyga to'g'ri shaklni qo'ying</div>${sent(q.sentence)}${q.base?`<div class="muted ko">(${esc(q.base)})</div>`:""}<div class="muted" style="font-size:13px;margin-top:4px">${esc(q.uz||"")}</div>`;
   el.innerHTML=`<div class="q-wrap">
     <div class="lesson-top"><button class="iconbtn" id="gpQ">✕</button><div class="bar" style="margin:0"><i style="width:${gPr.i/gPr.list.length*100}%"></i></div><span class="combo ${gPr.combo>=3?"hot":""}">🔥 ${gPr.combo}</span></div>
-    <div class="panel q-card">
-      <div class="q-title">Bo'sh joyga to'g'ri shaklni qo'ying</div>
-      <div class="g-front-s ko" style="margin:8px 0">${esc(q.sentence).replace("___",'<span class="blank">___</span>')}</div>
-      ${q.base?`<div class="muted ko">(${esc(q.base)})</div>`:""}<div class="muted" style="font-size:13px;margin-top:4px">${esc(q.uz)}</div>
-      <div class="optsq">${opts.map((o,i)=>`<button class="ko" data-o="${i}">${esc(o)}</button>`).join("")}</div>
+    <div class="panel q-card">${body}
+      <div class="optsq ${kind==="meaning"?"one":""}">${opts.map((o,i)=>`<button class="${kind==="meaning"?"":"ko"}" data-o="${i}">${esc(o)}</button>`).join("")}</div>
     </div><div id="gFb"></div></div>`;
   $("#gpQ").onclick=()=>{ gPr=null; renderGrammar(); };
   el.querySelectorAll("[data-o]").forEach(b=>b.onclick=async()=>{
@@ -1512,12 +1711,12 @@ function renderGPractice(){
     if(ok){ gPr.ok++; gPr.combo++; e[g.id]=Math.max(0,(e[g.id]||0)-.5); }
     else { b.classList.add("wrong"); gPr.combo=0; e[g.id]=(e[g.id]||0)+1; g.due=Date.now(); persistGram(g).catch(()=>{}); }
     LS.set("gErr",e);
-    const full=q.sentence.replace("___",q.answer);
+    const full = kind==="cloze" ? q.sentence.replace("___",q.answer) : kind==="which" ? q.full : "";
     $("#gFb").innerHTML=`<div class="fb-bar ${ok?"ok":"no"}"><div class="fb-h">${ok?pick(["To'g'ri! 👏","Barakalla! 🎉","Zo'r! ✨"]):"Noto'g'ri"}</div>
-      <div class="fb-c ko">${esc(full)} ${spk(full)}</div>
-      <div class="fb-s">📘 <span class="ko">${esc(g.title)}</span> — ${esc(g.meaning)}</div>
+      ${full?`<div class="fb-c ko">${esc(full)} ${spk(full)}</div>`:""}
+      <div class="fb-s">📘 <span class="ko">${esc(g.title)}</span>${g.meaning?" — "+esc(g.meaning):""}</div>
       <button class="btn ${ok?"green":"primary"}" id="gpN">Davom etish</button></div>`;
-    $("#gpN").onclick=()=>{ gPr.i++; renderGPractice(); }; $("#gpN").focus(); speak(full);
+    $("#gpN").onclick=()=>{ gPr.i++; renderGPractice(); }; $("#gpN").focus(); if(full) speak(full);
   });
 }
 document.addEventListener("keydown", e=>{

@@ -1,5 +1,5 @@
 // Ilovani internetsiz ham ochish uchun. Kod yangilansa, keyingi ochilishda o'zi yangilanadi.
-const CACHE = "danEo-v4";
+const CACHE = "danEo-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
