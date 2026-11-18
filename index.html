@@ -900,7 +900,11 @@ function backHTML(c){
 }
 function renderReview(){
   const el=$("#tab-review");
-  if(!cards.filter(inFolder).length){ el.innerHTML=`<div class="panel empty"><div class="e">🗂️</div><h3>Bu papkada hali so'z yo'q</h3><p class="muted">«Qo'shish» bo'limida birinchi so'zingizni kiriting.</p></div>`; return; }
+  if(!cards.filter(inFolder).length){
+    const other = curFolder!=="all" && cards.length;
+    el.innerHTML=`<div class="panel empty"><div class="e">🗂️</div><h3>Bu papkada hali so'z yo'q</h3><p class="muted">${other?`Boshqa papkalarda ${cards.length} ta so'z bor.`:"«Qo'shish» bo'limida birinchi so'zingizni kiriting."}</p>${other?`<button class="btn primary" id="toAll" style="margin-top:8px">Hamma papkalardan takrorlash</button>`:""}</div>`;
+    const ta=$("#toAll"); if(ta) ta.onclick=()=>{ curFolder="all"; LS.set("folder","all"); session=null; renderAll(); };
+    return; }
   if(!session){
     const due=dueCards(), nw=due.filter(isNew).length;
     const up=cards.filter(inFolder).filter(c=>(c.due||0)>Date.now()).sort((a,b)=>a.due-b.due)[0];
@@ -1691,12 +1695,12 @@ function wireQ(q){
     const play=r=>speak(q.it.read, r); $("#play").onclick=()=>play(.9); $("#slow").onclick=()=>play(.55);
     setTimeout(()=>play(.9), 250);
     const inp=$("#numAns"); inp.focus();
-    const go=()=>{ if(nl.answered) return next(); const v=inp.value.replace(/\D/g,""); if(!v) return; answer(q, +v===q.it.n, `Siz yozdingiz: ${v}`); inp.disabled=true; };
+    const go=()=>{ if(nl.answered) return nextNum(); const v=inp.value.replace(/\D/g,""); if(!v) return; answer(q, +v===q.it.n, `Siz yozdingiz: ${v}`); inp.disabled=true; };
     $("#chk").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
   }
   if(q.type==="type"){
     const inp=$("#hanAns"); inp.focus();
-    const go=()=>{ if(nl.answered) return next(); if(!inp.value.trim()) return; const v=flat(inp.value);
+    const go=()=>{ if(nl.answered) return nextNum(); if(!inp.value.trim()) return; const v=flat(inp.value);
       answer(q, v===flat(q.answer) || (q.alt && v===flat(q.alt))); inp.disabled=true; };
     $("#chk").onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
   }
@@ -1740,11 +1744,11 @@ function answer(q, ok, heardNote, soft){
     <div class="fb-c"><span class="ko">${q.type==="type"?"":esc(q.it.text)+" → "}<b>${esc(correct)}</b></span> ${spk(sayText)}</div>
     <div class="fb-s">💡 ${esc(rule)}</div>
     <button class="btn ${ok?"green":"primary"}" id="nNext">Davom etish</button></div>`;
-  $("#nNext").onclick=next; $("#nNext").focus();
+  $("#nNext").onclick=nextNum; $("#nNext").focus();
   if(q.type!=="listen") setTimeout(()=>speak(sayText),150);
   const top=$(".lesson-top .combo"); if(top){ top.textContent="🔥 "+nl.combo; top.classList.toggle("hot",nl.combo>=3); }
 }
-function next(){ if(!nl) return; nl.i++; renderQ(); }
+function nextNum(){ if(!nl) return; nl.i++; renderQ(); }
 function renderLessonEnd(){
   const el=$("#tab-numbers"); finishDay(); LS.set("numXP", LS.get("numXP",0)+nl.xp);
   const pct=Math.round(nl.ok/nl.qs.length*100), st=numStats();
@@ -1759,7 +1763,7 @@ function renderLessonEnd(){
 }
 document.addEventListener("keydown", e=>{
   if(tab!=="numbers" || !nl || !nl.answered) return;
-  if(e.key==="Enter"){ e.preventDefault(); next(); }
+  if(e.key==="Enter"){ e.preventDefault(); nextNum(); }
 });
 
 /* ================= Google Drive sinxronlash ================= */
