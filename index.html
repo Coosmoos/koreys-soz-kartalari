@@ -218,6 +218,9 @@ textarea.field{resize:vertical;min-height:54px}
 .word-uz{font-size:19px;font-weight:700}
 .seg3{grid-template-columns:1fr 1fr 1fr}.seg3 button{font-size:12px;padding:8px 2px}
 .dk .w.long{font-size:18px}.word-ko.long{font-size:24px}.front .big-ko.long{font-size:32px;line-height:1.3}
+body.hide-roman .roman:not(.show), body.hide-roman .ex .r:not(.show), body.hide-roman .dk .r:not(.show){filter:blur(5px);cursor:pointer;user-select:none;background:#eee6da;border-radius:6px;padding:0 4px;transition:filter .2s}
+.rom-tg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:3px 7px;font-size:14px;margin-left:8px;opacity:.55}
+.rom-tg.on{opacity:1;background:var(--blue-soft);border-color:var(--blue)}
 .word-en{font-size:14.5px;color:#4b5f73;margin-top:2px}
 .ex .en{font-size:12.5px;color:#4b5f73;margin-top:1px}
 .d-en{margin-top:4px;font-size:13.5px;color:#4b5f73}
@@ -1099,7 +1102,7 @@ function renderReview(){
     : `<div class="dir">KOREYSCHA → O'ZBEKCHA</div><div class="big-ko ${c.ko.length>8?"long":""}">${esc(c.ko)}</div>${spk(c.ko)}<div class="muted">Ma'nosini eslang</div>`;
   const prev=[0,1,2,3].map(g=>fmtIn(schedule(c,g)._in));
   el.innerHTML=`
-    <div class="review-top"><span>${session.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span></div>
+    <div class="review-top"><span>${session.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span><button class="rom-tg" data-romtg title="Transkripsiya (o\'qilishi)">🔤</button></div>
     <div class="flip ${session.flipped?"flipped":""}" id="flip"><div class="inner">
       <div class="face front">${front}<div class="tap">Javobni ko'rish uchun kartani bosing</div></div>
       <div class="face back">${backHTML(c)}</div>
@@ -1155,7 +1158,7 @@ function renderPractice(){
     $("#back").onclick=()=>{pr=null;renderPractice();}; return;
   }
   const c=pr.list[pr.i];
-  const head=`<div class="review-top"><span>${pr.i+1} / ${pr.list.length}</span><div class="bar"><i style="width:${pr.i/pr.list.length*100}%"></i></div><span>✓ ${pr.score}</span></div>`;
+  const head=`<div class="review-top"><span>${pr.i+1} / ${pr.list.length}</span><div class="bar"><i style="width:${pr.i/pr.list.length*100}%"></i></div><span>✓ ${pr.score}</span><button class="rom-tg" data-romtg title="Transkripsiya (o\'qilishi)">🔤</button></div>`;
   if(pr.mode==="type"){
     el.innerHTML=`<div class="q-wrap">${head}<div class="panel q-card">${picHTML(c)}<div class="word-uz">${esc(c.uz)}</div>${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}
       <input id="ans" class="field ko" style="margin-top:14px;text-align:center;font-size:20px" placeholder="한국어로 쓰세요" autocomplete="off" autocapitalize="off">
@@ -1314,6 +1317,11 @@ function openSettings(msg){
       : `<p class="muted" style="font-size:13px;margin:0">Google sinxronlash hali sozlanmagan.</p>`}
     </div>
     <div class="set-sec">
+      <h4>Transkripsiya (o'qilishi)</h4>
+      <label class="switch"><input type="checkbox" id="romSet" ${LS.get("showRoman",false)?"checked":""}><i></i>Doim ko'rsatish</label>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">O'chiq bo'lsa, o'qilishi xira turadi — ustiga bossangiz ochiladi. Takrorlash va mashqda 🔤 tugmasi bilan ham almashtirish mumkin.</p>
+    </div>
+    <div class="set-sec">
       <h4>3. Ilovani telefonga o'rnatish</h4>
       ${isStandalone() ? `<p class="muted" style="font-size:13px;margin:0">✅ Ilova o'rnatilgan va alohida oynada ishlayapti.</p>`
         : deferredInstall ? `<button class="btn blue" id="setInstall">📲 Ilovani o'rnatish</button>`
@@ -1343,6 +1351,7 @@ function openSettings(msg){
     }catch(e){ s.className="status err"; s.textContent="Kalit ishlamadi: "+(e.message||""); }
   };
   wireSheetBlock(()=>openSettings());
+  const rs=$("#romSet"); if(rs) rs.onchange=()=>setRoman(rs.checked);
   const si=$("#setInstall"); if(si) si.onclick=()=>{ doInstall(); closeModal(); };
   const gi=$("#gIn"); if(gi) gi.onclick=()=>{ signIn(false); closeModal(); };
   const gs=$("#gSync"); if(gs) gs.onclick=()=>{ tokenOk() ? syncNow() : signIn(false); };
@@ -1813,7 +1822,7 @@ function renderGReview(){
     : `<div class="dir">QOIDANI ESLANG</div><div class="g-front-t ko">${esc(g.title)}</div><div class="muted">Ma'nosi nima va qanday qo'shiladi?</div>`;
   const prev=[0,1,2,3].map(n=>fmtIn(schedule(g,n)._in));
   el.innerHTML=`
-    <div class="review-top"><span>${gSession.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span></div>
+    <div class="review-top"><span>${gSession.done} ta tayyor</span><div class="bar"><i style="width:${pct}%"></i></div><span>${left} ta qoldi</span><button class="rom-tg" data-romtg title="Transkripsiya (o\'qilishi)">🔤</button></div>
     <div class="flip ${gSession.flipped?"flipped":""}" id="gFlip"><div class="inner">
       <div class="face front">${front}<div class="tap">Javobni ko'rish uchun bosing</div></div>
       <div class="face back">${qz?`<div class="g-ans ko">${esc(qz.sentence).replace("___",`<b>${esc(qz.answer)}</b>`)} ${spk(qz.sentence.replace("___",qz.answer))}</div>`:""}${gramBody(g,false)}</div>
@@ -2654,7 +2663,20 @@ function renderAll(){
   if(tab==="grammar" && !gSession && !gPr && !gOpen && !document.activeElement.closest?.("#tab-grammar")) renderGrammar();
   updGBadge();
 }
+/* transkripsiya: xohlagan paytda */
+function setRoman(on){ LS.set("showRoman", !!on); document.body.classList.toggle("hide-roman", !on); document.querySelectorAll("[data-romtg]").forEach(b=>b.classList.toggle("on", !!on)); }
+const ROM_SEL = ".roman, .ex .r, .dk .r, .mini-ex .r";
+document.addEventListener("click", e=>{
+  const tg=e.target.closest("[data-romtg]");
+  if(tg){ e.stopPropagation(); setRoman(!LS.get("showRoman",false)); return; }
+  if(!document.body.classList.contains("hide-roman")) return;
+  const r=e.target.closest(ROM_SEL);
+  if(r && !r.classList.contains("show")){ e.stopPropagation(); r.classList.add("show"); }
+}, true);
+new MutationObserver(()=>document.querySelectorAll("[data-romtg]").forEach(b=>b.classList.toggle("on", LS.get("showRoman",false)))).observe(document.body,{childList:true,subtree:true});
+document.addEventListener("keydown", e=>{ if((e.key==="r"||e.key==="R") && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) setRoman(!LS.get("showRoman",false)); });
 async function init(){
+  setRoman(LS.get("showRoman", false));
   try{
     cards = (await idb.all()) || [];
     grams = (await idb.gAll()) || [];
