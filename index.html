@@ -325,6 +325,8 @@ textarea.field{resize:vertical;min-height:54px}
 
   <section id="tab-add">
     <div class="panel">
+      <div class="seg"><button data-am="ai">✨ Avtomatik (Gemini)</button><button data-am="paste">📋 ChatGPT / Gemini natijasi</button></div>
+      <div id="aiBox">
       <textarea id="inWord" class="field" rows="2" placeholder="Yangi so'z: 사과, olma yoki apple… Bir nechta so'zni vergul yoki yangi qator bilan ajrating."></textarea>
       <div id="photoChip" class="photo-chip hidden">
         <img id="photoThumb" alt="">
@@ -336,6 +338,19 @@ textarea.field{resize:vertical;min-height:54px}
         <button class="btn primary" id="makeBtn">Karta yasash</button>
       </div>
       <input type="file" id="fileIn" accept="image/*" class="hidden">
+      </div>
+      <div id="pasteBox" class="hidden">
+        <ol class="steps" style="margin:0 0 10px">
+          <li><b>Buyruqni nusxalash</b> ni bosing.</li>
+          <li>ChatGPT yoki Gemini ilovasini oching, buyruqni joylashtiring va <b>rasmni ilova qiling</b> (yoki so'zlarni yozing).</li>
+          <li>Kelgan javobni to'liq nusxalab, pastdagi maydonga joylashtiring va <b>Kartalarga aylantirish</b> ni bosing.</li>
+        </ol>
+        <button class="btn sm blue" id="wpCopy">📋 Buyruqni nusxalash</button>
+        <textarea id="wpPrompt" class="field hidden" rows="4" readonly style="margin-top:8px"></textarea>
+        <textarea id="wpText" class="field" rows="6" style="margin-top:10px" placeholder="ChatGPT yoki Gemini javobini shu yerga joylashtiring. Oddiy ro'yxat ham bo'ladi: 사과 — olma — apple"></textarea>
+        <button class="btn primary" id="wpMake" style="width:100%;margin-top:8px">Kartalarga aylantirish</button>
+        <div class="hint-s">Gemini kalitingiz sarflanmaydi — ish ChatGPT Plus yoki Gemini obunangizda bajariladi.</div>
+      </div>
       <div class="opts-row">
         <label class="switch"><input type="checkbox" id="autoImg"><i></i>Rasmni avtomatik topish</label>
         <div class="row" style="gap:6px"><span class="muted" style="font-size:13px">Papka:</span><select id="addFolder" class="field" style="width:auto;padding:7px 10px"></select></div>
@@ -887,6 +902,69 @@ async function ensureFolder(){
   if(!folders.length){ folders=[{id:uid("f"), name:"Asosiy"}]; await saveFolders(folders[0]); }
   return folders[0].id;
 }
+
+/* --- so'zlar: ChatGPT/Gemini natijasini joylashtirish --- */
+let addMode = LS.get("addMode","ai");
+function wordPrompt(){
+  return `Sen koreys tili o'qituvchisisan. Men o'zbekman, Koreyada o'qiyman.
+Senga rasm (darslik sahifasi, menyu, yozuv) yoki so'zlar ro'yxatini yuboraman.
+• Rasmda koreyscha matn bo'lsa — o'rganishga arziydigan so'zlarni ajrat, lug'at shakliga keltir (조사larsiz, fe'llar -다 bilan), takrorlanganini bir marta ol, 은/는, 이/가 kabi yordamchilarni tashla. 25 tagacha.
+• Rasmda matn bo'lmasa — undagi asosiy narsalarning koreyscha nomini ber.
+• So'zlar ro'yxati bersam — har biri uchun karta tayyorla.
+
+Javobni FAQAT bitta JSON kod blokida ber, boshqa hech narsa yozma. Format:
+${SCHEMA}
+
+[RASMNI ILOVA QILING yoki SO'ZLARNI SHU YERGA YOZING]`;
+}
+function parseWordLines(text){
+  const out=[];
+  for(let line of String(text).split(/\n/)){
+    line=line.replace(/^\s*([-*•]|\d+[.)])\s*/,"").replace(/\*\*/g,"").trim();
+    if(!HANGUL.test(line)) continue;
+    const parts=line.split(/\s*(?:—|–|=|:|\||\t|\s-\s|→)\s*/).map(x=>x.trim()).filter(Boolean);
+    const ko=(parts.find(p=>HANGUL.test(p))||"").replace(/\s*\(.*?\)\s*/g,"").trim();
+    if(!ko || ko.length>40) continue;
+    const rest=parts.filter(p=>!HANGUL.test(p));
+    const roman=(line.match(/\(([a-z\s'-]+)\)/i)||[])[1]||"";
+    out.push({ko, roman, uz:rest[0]||"", en:rest[1]||"", pos:"", hanja:"", note:"", examples:[], emoji:"", img_query:rest[1]||rest[0]||"", from:"text"});
+  }
+  return out;
+}
+function addDraftList(list){
+  const have=new Set(drafts.map(d=>d.ko)), fresh=[];
+  for(const c of list){ if(!c || !c.ko || have.has(c.ko)) continue; have.add(c.ko);
+    fresh.push({...c, _id:uid("d"), sel:!dupOf(c.ko), dup:!!dupOf(c.ko), img:null, own:false, imgOpts:null, imgLoading:false, stripOpen:false}); }
+  drafts=[...fresh, ...drafts]; renderDrafts();
+  if(settings.autoImg) fresh.forEach(d=>autoImage(d));
+  return fresh.length;
+}
+function renderAddMode(){
+  document.querySelectorAll("[data-am]").forEach(b=>b.classList.toggle("on", b.dataset.am===addMode));
+  $("#aiBox").classList.toggle("hidden", addMode!=="ai");
+  $("#pasteBox").classList.toggle("hidden", addMode!=="paste");
+}
+document.querySelectorAll("[data-am]").forEach(b=>b.onclick=()=>{ addMode=b.dataset.am; LS.set("addMode",addMode); renderAddMode(); status(""); });
+$("#wpText").value = LS.get("wpText","");
+$("#wpText").oninput = e => LS.set("wpText", e.target.value);
+$("#wpCopy").onclick = async () => {
+  const p=wordPrompt(), ta=$("#wpPrompt");
+  try{ await navigator.clipboard.writeText(p); $("#wpCopy").textContent="✓ Nusxalandi — ChatGPT yoki Gemini'ga joylashtiring"; }
+  catch(e){ ta.value=p; ta.classList.remove("hidden"); ta.select(); $("#wpCopy").textContent="Matnni belgilab, nusxalang"; }
+};
+$("#wpMake").onclick = () => {
+  const text=$("#wpText").value.trim();
+  if(!text){ status("ChatGPT yoki Gemini javobini joylashtiring.", true); return; }
+  let list=null;
+  const m=text.match(/[\[{][\s\S]*[\]}]/);
+  if(m){ try{ list=normalize(JSON.parse(m[0])); }catch(e){ list=null; } }
+  if(!list || !list.length) list=parseWordLines(text);
+  if(!list.length){ status("Matndan koreyscha so'z topilmadi. Buyruqni nusxalab, javobni to'liq joylashtiring.", true); return; }
+  const n=addDraftList(list);
+  $("#wpText").value=""; LS.set("wpText","");
+  status(`✓ ${n} ta karta tayyor${m?"":" (oddiy ro'yxatdan — misollar va izohlarsiz)"}. Tekshirib, «Saqlash»ni bosing.`);
+};
+renderAddMode();
 
 /* ================= folders ================= */
 let addingFolder=false;
@@ -1468,11 +1546,11 @@ function pastePanel(){
     </div>
     <div class="hint-s">«Shunday saqlash» — Gemini'siz, matn o'zgarmaydi; testlar matndagi koreyscha gaplardan tuziladi. «Tartiblab test tuzish» — Gemini matnni o'zgartirmasdan tartiblaydi va 6 ta test savoli tuzadi (1 so'rov).</div>
     <details class="gpt-box">
-      <summary>💡 ChatGPT Plus'dan foydalanish (Gemini sarflanmaydi)</summary>
+      <summary>💡 ChatGPT yoki Gemini ilovasidan foydalanish (kalit sarflanmaydi)</summary>
       <ol class="steps">
-        <li><b>Buyruqni nusxalash</b> tugmasini bosing va ChatGPT'ga joylashtiring.</li>
+        <li><b>Buyruqni nusxalash</b> tugmasini bosing va ChatGPT yoki Gemini ilovasiga joylashtiring.</li>
         <li>[Mavzu] va [Savolingiz] o'rniga o'zingiznikini yozib yuboring.</li>
-        <li>ChatGPT bergan javobni to'liq nusxalab, yuqoridagi maydonga joylashtiring va <b>Shunday saqlash</b> ni bosing — dastur formatni o'zi taniydi, testlar ham tayyor bo'ladi.</li>
+        <li>Kelgan javobni to'liq nusxalab, yuqoridagi maydonga joylashtiring va <b>Shunday saqlash</b> ni bosing — dastur formatni o'zi taniydi, testlar ham tayyor bo'ladi. Skrinshot bo'lsa, uni ham ilovaga biriktiring.</li>
       </ol>
       <button class="btn sm blue" id="gpCopy">📋 Buyruqni nusxalash</button>
       <textarea id="gpPrompt" class="field hidden" rows="4" readonly></textarea>
