@@ -36,6 +36,21 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:5px 10px;text-align:right;min-width:62px}
 .stat b{display:block;font-size:17px;line-height:1.1}
 .stat small{color:var(--muted);font-size:10.5px}
+.statsbtn{display:flex;gap:6px;border:0;background:none;padding:0;cursor:pointer}
+.statsbtn .stat{display:block;position:relative}
+.statsbtn .stat:first-child::after{content:"📊";position:absolute;top:-6px;left:-6px;font-size:12px;background:var(--paper);border-radius:99px;padding:1px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:480px){.kpis{grid-template-columns:1fr 1fr}}
+.kpis div{background:#faf6ef;border-radius:12px;padding:10px;text-align:center}
+.kpis b{display:block;font-size:20px}.kpis small{color:var(--muted);font-size:11.5px}
+.up{color:var(--green);font-weight:800}.down{color:var(--red);font-weight:800}
+.chart{width:100%;height:auto;margin-top:6px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.stack{display:flex;height:14px;border-radius:99px;overflow:hidden;background:#eee6da;margin-top:6px}
+.s-new{background:#d8cfc2}.s-learn{background:#e6a23c}.s-young{background:#4a86c5}.s-mature{background:#2f7d4f}
+.krow{display:grid;grid-template-columns:1.4fr .6fr 1.4fr .5fr;gap:8px;align-items:center;font-size:13px;padding:5px 0}
+.kbar{height:8px;background:#eee6da;border-radius:99px;overflow:hidden}.kbar i{display:block;height:100%;background:var(--green)}
 .gear{border:1px solid var(--line);background:var(--paper);border-radius:12px;width:44px;height:44px;font-size:19px;position:relative;flex:none}
 .cdot{position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-radius:50%;border:2px solid var(--paper)}
 .cdot.ok{background:var(--green)}.cdot.need{background:var(--amber)}.cdot.err{background:var(--red)}
@@ -184,6 +199,10 @@ textarea.field{resize:vertical;min-height:54px}
 .word-ko{font-family:"Noto Sans KR";font-weight:700;font-size:32px;line-height:1.15}
 .roman{color:var(--muted);font-size:14px}
 .word-uz{font-size:19px;font-weight:700}
+.word-en{font-size:14.5px;color:#4b5f73;margin-top:2px}
+.ex .en{font-size:12.5px;color:#4b5f73;margin-top:1px}
+.d-en{margin-top:4px;font-size:13.5px;color:#4b5f73}
+.en-fill{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:var(--blue-soft);color:#173b5c;border-radius:12px;padding:9px 12px;margin-top:10px;font-size:13px}
 .note{font-size:13.5px;color:#4f4942;background:#faf6ef;border-radius:10px;padding:8px 10px;margin-top:10px}
 .ex{border-top:1px solid var(--line);padding:10px 0 2px;display:flex;gap:10px;align-items:flex-start}
 .ex .t{flex:1}
@@ -266,8 +285,7 @@ textarea.field{resize:vertical;min-height:54px}
       <p>Koreyscha so'zlarni yig'ing va mustahkamlang</p>
     </div>
     <div class="stats">
-      <div class="stat"><b id="stTotal">0</b><small>so'z</small></div>
-      <div class="stat"><b id="stDue" style="color:var(--red)">0</b><small>bugun</small></div>
+      <button class="statsbtn" id="statsBtn" title="Statistika"><span class="stat"><b id="stTotal">0</b><small>so'z</small></span><span class="stat"><b id="stDue" style="color:var(--red)">0</b><small>bugun</small></span></button>
       <button class="gear hidden" id="cloudBtn" title="Google bilan kirish">☁️</button>
       <button class="gear" id="openSettings" title="Sozlamalar">⚙️</button>
     </div>
@@ -314,7 +332,8 @@ textarea.field{resize:vertical;min-height:54px}
   <section id="tab-grammar" class="hidden"></section>
   <section id="tab-numbers" class="hidden"></section>
   <section id="tab-library" class="hidden">
-    <input id="search" class="field" placeholder="Qidirish: koreyscha yoki o'zbekcha…">
+    <input id="search" class="field" placeholder="Qidirish: koreyscha, o'zbekcha yoki inglizcha…">
+    <div id="enFill"></div>
     <div class="grid" id="grid"></div>
   </section>
 </div>
@@ -597,12 +616,13 @@ const SCHEMA = `{
    "ko": "koreyscha so'z, lug'at shaklida (fe'l/sifatlar -다 bilan)",
    "roman": "Revised Romanization bo'yicha o'qilishi",
    "uz": "o'zbekcha tarjima, lotin yozuvida (1–3 ma'no, vergul bilan)",
+   "en": "inglizcha tarjima (1–3 ma'no, vergul bilan)",
    "pos": "so'z turkumi o'zbekcha: ot / fe'l / sifat / ravish / ibora ...",
    "hanja": "xanja ildizi bo'lsa (masalan 學校), bo'lmasa bo'sh qator",
    "note": "qisqa foydali izoh o'zbekcha: qachon ishlatiladi, o'xshash so'zdan farqi yoki eslab qolish usuli (120 belgigacha)",
    "examples": [
-     {"ko":"kundalik hayotdan oddiy, tabiiy gap (TOPIK 1–2, 해요체)","roman":"o'qilishi","uz":"o'zbekcha tarjimasi"},
-     {"ko":"boshqa vaziyatdagi ikkinchi gap","roman":"...","uz":"..."}
+     {"ko":"kundalik hayotdan oddiy, tabiiy gap (TOPIK 1–2, 해요체)","roman":"o'qilishi","uz":"o'zbekcha tarjimasi","en":"inglizcha tarjimasi"},
+     {"ko":"boshqa vaziyatdagi ikkinchi gap","roman":"...","uz":"...","en":"..."}
    ],
    "emoji": "eng mos bitta emoji",
    "img_query": "rasm qidirish uchun 1–3 so'zli inglizcha so'rov: aniq ko'rinadigan narsa (masalan 'red apple fruit'); mavhum so'z uchun uni ko'rsatadigan sahna",
@@ -637,9 +657,9 @@ ${SCHEMA}`;
 function normalize(j){
   const arr = Array.isArray(j) ? j : (j.cards || []);
   return arr.filter(x=>x && x.ko).map(x=>({
-    ko:String(x.ko).trim(), roman:String(x.roman||"").trim(), uz:String(x.uz||"").trim(),
+    ko:String(x.ko).trim(), roman:String(x.roman||"").trim(), uz:String(x.uz||"").trim(), en:String(x.en||"").trim(),
     pos:String(x.pos||"").trim(), hanja:String(x.hanja||"").trim(), note:String(x.note||"").trim(),
-    examples:(Array.isArray(x.examples)?x.examples:[]).slice(0,3).map(e=>({ko:String(e.ko||""),roman:String(e.roman||""),uz:String(e.uz||"")})),
+    examples:(Array.isArray(x.examples)?x.examples:[]).slice(0,3).map(e=>({ko:String(e.ko||""),roman:String(e.roman||""),uz:String(e.uz||""),en:String(e.en||"")})),
     emoji:String(x.emoji||"").slice(0,8), img_query:String(x.img_query||"").trim(), from:x.from==="object"?"object":"text"
   }));
 }
@@ -742,6 +762,7 @@ function renderDrafts(){
   $("#dSave").onclick = saveDrafts;
   box.querySelectorAll("[data-sel]").forEach(i => i.onchange = () => { draft(i.dataset.sel).sel = i.checked; renderDrafts(); });
   box.querySelectorAll("[data-uz]").forEach(i => i.oninput = () => { draft(i.dataset.uz).uz = i.value; });
+  box.querySelectorAll("[data-en]").forEach(i => i.oninput = () => { draft(i.dataset.en).en = i.value; });
   box.querySelectorAll("[data-act]").forEach(b => b.onclick = () => draftAction(b.dataset.id, b.dataset.act, b));
   box.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => {
     const d = draft(b.dataset.id), o = d.imgOpts[+b.dataset.pick];
@@ -761,9 +782,10 @@ function draftHTML(d){
     <div>${picHTML(d, d.imgLoading && !d.img)}${d.credit&&d.remote?`<div class="credit">${esc(d.credit)}</div>`:""}</div>
     <div style="min-width:0">
       <div class="dk"><span class="w">${esc(d.ko)}</span><span class="r">${esc(d.roman)}</span>${spk(d.ko)}</div>
-      <input class="field d-uz" data-uz="${d._id}" value="${esc(d.uz)}">
+      <input class="field d-uz" data-uz="${d._id}" value="${esc(d.uz)}" placeholder="o'zbekcha">
+      <input class="field d-uz d-en" data-en="${d._id}" value="${esc(d.en||"")}" placeholder="English">
       <div>${d.pos?`<span class="tag">${esc(d.pos)}</span>`:""}${d.hanja?`<span class="tag h">${esc(d.hanja)}</span>`:""}${d.dup?`<span class="tag dup">allaqachon bor</span>`:""}</div>
-      ${ex?`<div class="mini-ex"><span class="k">${esc(ex.ko)}</span> — ${esc(ex.uz)}</div>`:""}
+      ${ex?`<div class="mini-ex"><span class="k">${esc(ex.ko)}</span> — ${esc(ex.uz)}${ex.en?`<br><span class="muted">🇬🇧 ${esc(ex.en)}</span>`:""}</div>`:""}
       <div class="img-tools">
         <button class="btn sm" data-act="find" data-id="${d._id}">🔍 ${d.imgOpts?"Boshqa rasm":"Rasm topish"}</button>
         <button class="btn sm" data-act="own" data-id="${d._id}">📷 O'z rasmim</button>
@@ -804,12 +826,12 @@ async function saveDrafts(){
     let img = d.img;
     if(img && d.remote) img = await urlToCardImg(img);
     return {
-      id:uid("c"), ko:d.ko, roman:d.roman, uz:d.uz, pos:d.pos, hanja:d.hanja, note:d.note, examples:d.examples,
+      id:uid("c"), ko:d.ko, roman:d.roman, uz:d.uz, en:d.en||"", pos:d.pos, hanja:d.hanja, note:d.note, examples:d.examples,
       emoji:d.emoji, img_query:d.img_query, img:img||null, credit:d.remote?(d.credit||""):"",
       folder, created:now, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0
     };
   }));
-  await persistMany(out); cards.push(...out);
+  await persistMany(out); cards.push(...out); logNew(out.length);
   drafts = drafts.filter(d=>!d.sel);
   status(`✓ ${out.length} ta karta «${esc(folderName(folder))}» papkasiga saqlandi.`);
   renderDrafts(); renderAll();
@@ -892,11 +914,11 @@ function next(){
 function backHTML(c){
   return `${picHTML(c)}${c.credit?`<div class="credit" style="margin:-8px 0 8px">${esc(c.credit)}</div>`:""}
     <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div class="word-ko">${esc(c.ko)}</div><div class="roman">${esc(c.roman)}</div></div>${spk(c.ko)}</div>
-    <div class="word-uz" style="margin-top:6px">${esc(c.uz)}</div>
+    <div class="word-uz" style="margin-top:6px">${esc(c.uz)}</div>${c.en?`<div class="word-en">🇬🇧 ${esc(c.en)}</div>`:""}
     <div>${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}${c.hanja?`<span class="tag h">${esc(c.hanja)}</span>`:""}</div>
     ${c.note?`<div class="note">💡 ${esc(c.note)}</div>`:""}
     ${(c.examples||[]).length?`<div class="sec-t">Misollar</div>`:""}
-    ${(c.examples||[]).map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div><div class="r">${esc(x.roman)}</div><div class="u">${esc(x.uz)}</div></div>${spk(x.ko)}</div>`).join("")}`;
+    ${(c.examples||[]).map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div><div class="r">${esc(x.roman)}</div><div class="u">${esc(x.uz)}</div>${x.en?`<div class="en">🇬🇧 ${esc(x.en)}</div>`:""}</div>${spk(x.ko)}</div>`).join("")}`;
 }
 function renderReview(){
   const el=$("#tab-review");
@@ -922,7 +944,7 @@ function renderReview(){
   const c=cards.find(x=>x.id===session.cur.id); if(!c){ next(); return; }
   const left=session.queue.length+1, pct=session.done/(session.done+left)*100;
   const front = session.cur.dir==="uz"
-    ? `<div class="dir">O'ZBEKCHA → KOREYSCHA</div><div class="big-uz">${esc(c.uz)}</div>${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}<div class="muted">Koreyschasini eslang</div>`
+    ? `<div class="dir">O'ZBEKCHA → KOREYSCHA</div><div class="big-uz">${esc(c.uz)}</div>${c.en?`<div class="word-en">${esc(c.en)}</div>`:""}${c.pos?`<span class="tag">${esc(c.pos)}</span>`:""}<div class="muted">Koreyschasini eslang</div>`
     : `<div class="dir">KOREYSCHA → O'ZBEKCHA</div><div class="big-ko">${esc(c.ko)}</div>${spk(c.ko)}<div class="muted">Ma'nosini eslang</div>`;
   const prev=[0,1,2,3].map(g=>fmtIn(schedule(c,g)._in));
   el.innerHTML=`
@@ -944,6 +966,7 @@ function renderReview(){
   el.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>rate(c,+b.dataset.g));
 }
 async function rate(c,g){
+  logAnswer("w", g>=1, c.ko, g);
   const {_in, ...upd}=schedule(c,g); Object.assign(c,upd);
   session.done++; if(_in<=20*MIN) session.queue.push(c.id);
   next(); renderFolders();
@@ -990,7 +1013,7 @@ function renderPractice(){
     const inp=$("#ans"); inp.focus();
     const norm=s=>String(s).normalize("NFC").replace(/[\s.,!?~·]/g,"");
     const finish=ok=>{
-      pr.answered=true; if(ok) pr.score++; else markWrong(c);
+      pr.answered=true; logAnswer("wp", ok, c.ko); if(ok) pr.score++; else markWrong(c);
       $("#fb").className="fb "+(ok?"ok":"no");
       $("#fb").innerHTML= ok?`To'g'ri! ${esc(c.ko)} ${spk(c.ko)}`:`To'g'ri javob: <span class="ko">${esc(c.ko)}</span> (${esc(c.roman)}) ${spk(c.ko)}`;
       $("#chk").textContent="Keyingisi →"; $("#skip").classList.add("hidden"); inp.disabled=true; speak(c.ko);
@@ -1009,7 +1032,7 @@ function renderPractice(){
     <div class="row hidden" id="nx" style="justify-content:center"><button class="btn primary" id="nextQ">Keyingisi →</button></div></div></div>`;
   el.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{
     if(pr.answered) return; pr.answered=true;
-    const ok=b.dataset.o===c.id; if(ok) pr.score++; else { b.classList.add("wrong"); markWrong(c); }
+    const ok=b.dataset.o===c.id; logAnswer("wp", ok, c.ko); if(ok) pr.score++; else { b.classList.add("wrong"); markWrong(c); }
     el.querySelector(`[data-o="${CSS.escape(c.id)}"]`).classList.add("right");
     $("#fb").className="fb "+(ok?"ok":"no");
     $("#fb").innerHTML= ok?"To'g'ri! 👏":`To'g'ri javob: <span class="ko">${esc(c.ko)}</span> — ${esc(c.uz)}`;
@@ -1021,9 +1044,33 @@ async function markWrong(c){ c.due=Date.now(); try{ await persist(c); }catch(e){
 
 /* ================= library ================= */
 $("#search").oninput=renderLibrary;
+async function fillEnglish(){
+  const need = cards.filter(c=>!c.en || (c.examples||[]).some(e=>e.ko && !e.en));
+  if(!need.length || !settings.key){ if(!settings.key) openSettings(); return; }
+  const box=$("#enFill"); let done=0;
+  for(let i=0;i<need.length;i+=25){
+    const part=need.slice(i,i+25);
+    box.innerHTML=`<div class="status"><span class="spinner"></span> Inglizcha tarjimalar qo'shilmoqda… ${done}/${need.length}</div>`;
+    try{
+      const j = await gemini([{text:`Quyidagi koreyscha so'zlar va misol gaplarni inglizchaga tarjima qil. O'zbekcha tarjima ma'noni aniqlash uchun berilgan. Faqat JSON qaytar.
+${JSON.stringify(part.map(c=>({id:c.id, ko:c.ko, uz:c.uz, examples:(c.examples||[]).map(e=>e.ko)})))}
+Format: {"items":[{"id":"…","en":"so'z tarjimasi (1–3 ma'no, vergul bilan)","examples":["1-gap tarjimasi","2-gap tarjimasi"]}]}`}]);
+      for(const it of (j.items||[])){
+        const c=cards.find(x=>x.id===it.id); if(!c) continue;
+        if(it.en) c.en=String(it.en).trim();
+        (c.examples||[]).forEach((e,k)=>{ if(it.examples && it.examples[k]) e.en=String(it.examples[k]).trim(); });
+      }
+      await persistMany(part.filter(c=>c.en)); done+=part.length;
+    }catch(e){ box.innerHTML=`<div class="status err">${errText(e)}</div>`; renderLibrary(); return; }
+  }
+  box.innerHTML=`<div class="status">✓ ${done} ta kartaga inglizcha tarjima qo'shildi.</div>`; renderLibrary();
+}
 function renderLibrary(){
+  const lack = cards.filter(c=>!c.en).length, fb=$("#enFill");
+  if(fb && !fb.querySelector(".spinner")) fb.innerHTML = lack ? `<div class="en-fill"><span>🇬🇧 ${lack} ta kartada inglizcha tarjima yo'q.</span><button class="btn sm blue" id="enBtn">Qo'shish (${Math.ceil(lack/25)} ta so'rov)</button></div>` : (fb.querySelector(".status")?fb.innerHTML:"");
+  const eb=$("#enBtn"); if(eb) eb.onclick=fillEnglish;
   const q=$("#search").value.trim().toLowerCase();
-  const list=cards.filter(inFolder).filter(c=>!q||[c.ko,c.uz,c.roman].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
+  const list=cards.filter(inFolder).filter(c=>!q||[c.ko,c.uz,c.en,c.roman].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
   if(!list.length){ $("#grid").innerHTML=`<div class="muted" style="grid-column:1/-1;padding:20px;text-align:center">${q?"Hech narsa topilmadi.":"Bu papkada hali so'z yo'q."}</div>`; return; }
   const now=Date.now();
   $("#grid").innerHTML=list.map(c=>{
@@ -1047,7 +1094,7 @@ function openCard(id){
       <div class="strip">${st.loading?`<span class="muted" style="font-size:13px;padding:8px"><span class="spinner"></span> Qidirilmoqda…</span>`:
       (st.opts&&st.opts.length?st.opts.map((o,i)=>`<button type="button" data-cp="${i}"><img src="${esc(o.thumb)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join(""):`<span class="muted" style="font-size:13px;padding:8px">Rasm topilmadi.</span>`)}</div>`:""}
     <div class="sec-t">Tarjima</div>
-    <div style="display:flex;gap:6px"><input id="cUz" class="field" style="padding:8px 10px" value="${esc(c.uz)}"><button class="btn sm" id="cUzSave">Saqlash</button></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><input id="cUz" class="field" style="padding:8px 10px" value="${esc(c.uz)}" placeholder="o'zbekcha"><input id="cEn" class="field" style="padding:8px 10px" value="${esc(c.en||"")}" placeholder="English"><button class="btn sm" id="cUzSave" style="align-self:flex-start">Saqlash</button></div>
     <div class="sec-t">Holati</div>
     <div class="muted" style="font-size:13px">Keyingi takrorlash: ${dueLabel(c)} · ${c.reps||0} marta to'g'ri · ${c.lapses||0} marta unutilgan</div>
     <div class="row" style="margin-top:14px">
@@ -1068,7 +1115,7 @@ function openCard(id){
     const o=st.opts[+b.dataset.cp]; b.innerHTML='<span class="spinner"></span>';
     c.img=await urlToCardImg(o.thumb); c.credit=o.credit; c.img_query=st.q; await saveCard(c); st.open=false; openCard(id); renderAll();
   });
-  $("#cUzSave").onclick=async()=>{ c.uz=$("#cUz").value.trim()||c.uz; await saveCard(c); openCard(id); renderAll(); };
+  $("#cUzSave").onclick=async()=>{ c.uz=$("#cUz").value.trim()||c.uz; c.en=$("#cEn").value.trim(); await saveCard(c); openCard(id); renderAll(); };
   $("#mvBtn").onclick=async()=>{ c.folder=$("#mvSel").value; await saveCard(c); closeModal(); renderAll(); };
   $("#resetBtn").onclick=async()=>{ Object.assign(c,{due:Date.now(),reps:0,interval:0,last:0}); await saveCard(c); closeModal(); renderAll(); };
   $("#delBtn").onclick=async()=>{
@@ -1120,7 +1167,11 @@ function openSettings(msg){
         : `<p class="muted" style="font-size:13px;margin:0">Chrome menyusi (⋮) → <b>«Ilovani o'rnatish»</b> yoki <b>«Bosh ekranga qo'shish»</b>.</p>`}
     </div>
     <div class="set-sec">
-      <h4>4. Zaxira nusxa</h4>
+      <h4>4. Natijalar jadvali (Google Sheets)</h4>
+      ${sheetBlock()}
+    </div>
+    <div class="set-sec">
+      <h4>5. Zaxira nusxa</h4>
       <p class="muted" style="font-size:13px;margin:0 0 8px">Kartalar shu qurilmada saqlanadi. Boshqa qurilmaga o'tkazish yoki yo'qolmasligi uchun faylga saqlab qo'ying.</p>
       <div class="row"><button class="btn sm" id="expBtn">⬇️ Faylga saqlash</button><button class="btn sm" id="impBtn">⬆️ Fayldan tiklash</button></div>
       <div class="status" id="bkStatus"></div>
@@ -1137,6 +1188,7 @@ function openSettings(msg){
       notice(""); openSettings(`<span style="color:var(--green)">✓ Kalit ishlayapti. Endi so'z qo'shishingiz mumkin.</span>`);
     }catch(e){ s.className="status err"; s.textContent="Kalit ishlamadi: "+(e.message||""); }
   };
+  wireSheetBlock(()=>openSettings());
   const si=$("#setInstall"); if(si) si.onclick=()=>{ doInstall(); closeModal(); };
   const gi=$("#gIn"); if(gi) gi.onclick=()=>{ signIn(false); closeModal(); };
   const gs=$("#gSync"); if(gs) gs.onclick=()=>{ tokenOk() ? syncNow() : signIn(false); };
@@ -1181,7 +1233,7 @@ const GSCHEMA = `{
  "meaning": "1–2 gapda asosiy ma'nosi, o'zbekcha",
  "form": ["qanday qo'shilishi, har biri alohida qator: masalan «Undosh bilan tugagan fe'l: 먹다 → 먹을 때»", "«Unli bilan: 가다 → 갈 때»", "«ㄹ bilan: 살다 → 살 때»"],
  "explanation": "foydalanuvchining SAVOLIGA aniq javob beradigan tushuntirish, o'zbekcha, 4–8 gap; oddiy til, kerak bo'lsa o'zbek tilidagi o'xshash qo'shimcha bilan solishtir",
- "examples": [{"ko":"kundalik hayotdan tabiiy gap","roman":"o'qilishi","uz":"tarjimasi"}],
+ "examples": [{"ko":"kundalik hayotdan tabiiy gap","roman":"o'qilishi","uz":"o'zbekcha tarjimasi","en":"inglizcha tarjimasi"}],
  "mistakes": ["o'zbek o'quvchilari ko'p qiladigan xato va to'g'ri varianti"],
  "compare": "o'xshash grammatikadan farqi (bo'lsa), o'zbekcha, 1–3 gap; bo'lmasa bo'sh qator",
  "quiz": [{"sentence":"gap, grammatika o'rnida ___ bilan","base":"qavs ichida beriladigan asos so'z, masalan 가다","answer":"to'g'ri shakl, ___ o'rniga","options":["to'g'ri javob va 3 ta ishonarli noto'g'ri shakl"],"uz":"gapning tarjimasi"}]
@@ -1208,7 +1260,7 @@ function normGram(j){
   }).filter(q=>q.sentence.includes("___") && q.answer);
   return { title:S(j.title)||"Grammatika", name_uz:S(j.name_uz), level:S(j.level), meaning:S(j.meaning),
     form:A(j.form).map(S).filter(Boolean), explanation:S(j.explanation),
-    examples:A(j.examples).map(e=>({ko:S(e.ko),roman:S(e.roman),uz:S(e.uz)})).filter(e=>e.ko).slice(0,6),
+    examples:A(j.examples).map(e=>({ko:S(e.ko),roman:S(e.roman),uz:S(e.uz),en:S(e.en)})).filter(e=>e.ko).slice(0,6),
     mistakes:A(j.mistakes).map(S).filter(Boolean), compare:S(j.compare), quiz };
 }
 async function askFollowUp(g, q){
@@ -1217,11 +1269,11 @@ async function askFollowUp(g, q){
 Mavzu bo'yicha avval berilgan tushuntirish: ${JSON.stringify(brief)}
 O'quvchining qo'shimcha savoli: ${JSON.stringify(q)}
 Qisqa va aniq javob ber (o'zbekcha, 2–6 gap), kerak bo'lsa 1–2 ta misol bilan.
-Format: {"answer":"…","examples":[{"ko":"…","roman":"…","uz":"…"}]}`}]);
-  return {q, a:String(j.answer||"").trim(), examples:(Array.isArray(j.examples)?j.examples:[]).slice(0,3).map(e=>({ko:String(e.ko||""),roman:String(e.roman||""),uz:String(e.uz||"")})), at:Date.now()};
+Format: {"answer":"…","examples":[{"ko":"…","roman":"…","uz":"…","en":"…"}]}`}]);
+  return {q, a:String(j.answer||"").trim(), examples:(Array.isArray(j.examples)?j.examples:[]).slice(0,3).map(e=>({ko:String(e.ko||""),roman:String(e.roman||""),uz:String(e.uz||""),en:String(e.en||"")})), at:Date.now()};
 }
 
-const exHTML = list => list.map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div>${x.roman?`<div class="r">${esc(x.roman)}</div>`:""}<div class="u">${esc(x.uz)}</div></div>${spk(x.ko)}</div>`).join("");
+const exHTML = list => list.map(x=>`<div class="ex"><div class="t"><div class="k">${esc(x.ko)}</div>${x.roman?`<div class="r">${esc(x.roman)}</div>`:""}<div class="u">${esc(x.uz)}</div>${x.en?`<div class="en">🇬🇧 ${esc(x.en)}</div>`:""}</div>${spk(x.ko)}</div>`).join("");
 const para = t => esc(t).replace(/\n+/g,"<br>");
 function gramBody(g, full){
   return `
@@ -1392,6 +1444,7 @@ function renderGReview(){
   $("#gFlip").onclick=()=>{ if(gSession.flipped) return; gSession.flipped=true; $("#gFlip").classList.add("flipped"); $("#gGrades").classList.remove("hidden"); };
   $("#gStop").onclick=()=>{ gSession=null; renderGrammar(); };
   el.querySelectorAll("[data-gg]").forEach(b=>b.onclick=async()=>{
+    logAnswer("g", +b.dataset.gg>=1, g.title, +b.dataset.gg);
     const {_in,...upd}=schedule(g,+b.dataset.gg); Object.assign(g,upd); gSession.done++;
     if(_in<=20*MIN) gSession.queue.push(g.id);
     nextG(); try{ await persistGram(g); }catch(e){} updGBadge();
@@ -1427,7 +1480,7 @@ function renderGPractice(){
   $("#gpQ").onclick=()=>{ gPr=null; renderGrammar(); };
   el.querySelectorAll("[data-o]").forEach(b=>b.onclick=async()=>{
     if(gPr.answered) return; gPr.answered=true;
-    const ok=opts[+b.dataset.o]===q.answer; beep(ok);
+    const ok=opts[+b.dataset.o]===q.answer; beep(ok); logAnswer("gp", ok, g.title);
     el.querySelectorAll("[data-o]").forEach(x=>{ if(opts[+x.dataset.o]===q.answer) x.classList.add("right"); });
     const e=LS.get("gErr",{});
     if(ok){ gPr.ok++; gPr.combo++; e[g.id]=Math.max(0,(e[g.id]||0)-.5); }
@@ -1731,7 +1784,7 @@ function listenSpeech(q){
   try{ rec.start(); }catch(e){ hint.textContent="Mikrofonni ishga tushirib bo'lmadi."; }
 }
 function answer(q, ok, heardNote, soft){
-  nl.answered=true; beep(ok);
+  nl.answered=true; beep(ok); logAnswer("n", ok, q.it ? q.it.text : `${q.n} (${q.sys==="n"?"koreyscha":"xitoycha"})`);
   if(ok){ nl.ok++; nl.combo++; nl.best=Math.max(nl.best,nl.combo); nl.xp += 10 + (nl.combo>=3?5:0); if(q.it) bumpErr(q.it.ctx.id,-.5); }
   else { nl.combo=0; if(q.it){ bumpErr(q.it.ctx.id,1); nl.wrongs.push(q.it.ctx.id); } }
   let correct, rule="";
@@ -1769,7 +1822,9 @@ document.addEventListener("keydown", e=>{
 /* ================= Google Drive sinxronlash ================= */
 // OAuth Client ID ochiq ma'lumot (maxfiy emas) — u faqat shu sayt manzilidan ishlaydi.
 const GOOGLE_CLIENT_ID = "523791305083-s3oju6k5qmq3ndt70fca6mfdj612p0fq.apps.googleusercontent.com";
-const SCOPE = "https://www.googleapis.com/auth/drive.appdata"; // faqat dasturning yashirin papkasi
+const SCOPE_APP = "https://www.googleapis.com/auth/drive.appdata"; // faqat dasturning yashirin papkasi
+const SCOPE_FILE = "https://www.googleapis.com/auth/drive.file";   // faqat shu ilova yaratgan fayllar (natijalar jadvali)
+const SCOPE = SCOPE_APP + " " + SCOPE_FILE;
 const DRIVE = "https://www.googleapis.com/drive/v3", UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const DATA_FILE = "danEo-data.json";
 let gToken=null, gExp=0, tokenClient=null, syncing=false, syncAgain=false, syncTimer=null, cloud="off";
@@ -1790,6 +1845,7 @@ function initGis(){
     callback: r => {
       if(r.error){ cloudState(LS.get("gsign",false)?"need":"off"); return; }
       gToken = r.access_token; gExp = Date.now() + (Number(r.expires_in||3600)-120)*1000;
+      try{ LS.set("scopeFile", google.accounts.oauth2.hasGrantedAllScopes(r, SCOPE_FILE)); }catch(e){ LS.set("scopeFile", String(r.scope||"").includes(SCOPE_FILE)); }
       LS.set("gsign", true); syncNow();
     },
     error_callback: () => cloudState(LS.get("gsign",false)?"need":"off")
@@ -1885,6 +1941,9 @@ async function syncNow(){
 
     // Gemini kaliti (faqat sizning Drive'ingizdagi yashirin papkada)
     const rs = remote.settings||{};
+    // statistika (har bir qurilma o'z qismini yozadi)
+    statsAll = {...(remote.stats||{})}; delete statsAll[devId]; await idb.set("statsAll", statsAll);
+    if((rs.sheetMod||0) > LS.get("sheetMod",0)){ LS.set("sheetId", rs.sheetId||""); LS.set("sheetMod", rs.sheetMod||0); }
     if(rs.key && (!settings.key || (rs.keyMod||0) > LS.get("keyMod",0))){ settings.key=rs.key; LS.set("key",rs.key); LS.set("keyMod",rs.keyMod||0); notice(""); ensureModels(true); }
 
     // rasmlarni yuklash
@@ -1896,7 +1955,8 @@ async function syncNow(){
     }
     // ma'lumot fayli
     const data = {app:"danEo-cards", v:3, cards:cards.map(forCloud), grammar:grams.map(forCloud), folders, deleted, fdeleted, gdeleted,
-                  settings: settings.key ? {key:settings.key, keyMod:LS.get("keyMod",0)} : (rs.key?rs:{})};
+                  stats: {...statsAll, [devId]: statDays},
+                  settings: {...(settings.key ? {key:settings.key, keyMod:LS.get("keyMod",0)} : (rs.key?{key:rs.key,keyMod:rs.keyMod}:{})), sheetId:LS.get("sheetId",""), sheetMod:LS.get("sheetMod",0)}};
     const text = JSON.stringify(data);
     if(text !== remoteText){
       const blob = new Blob([text], {type:"application/json"});
@@ -1907,6 +1967,7 @@ async function syncNow(){
     for(const name in files) if(/^img-/.test(name) && !used.has(name)) await driveDel(files[name]);
 
     LS.set("lastSync", Date.now()); cloudState("ok"); renderAll();
+    writeSheet(false).catch(()=>{});
   }catch(e){
     if(e && e.code==="auth") cloudState("need");
     else cloudState("err", "Sinxronlashda xato: " + (e && (e.message||e.status) || "aloqa yo'q"));
@@ -1926,6 +1987,162 @@ function bootGoogle(){
     else if(tries>40) clearInterval(t);
   }, 250);
 }
+
+/* ================= STATISTIKA va GOOGLE SHEETS ================= */
+const KIND = {w:"So'z takrori", wp:"So'z mashqi", n:"Sonlar", g:"Grammatika takrori", gp:"Grammatika mashqi"};
+const devId = LS.get("devId", null) || (()=>{ const v=uid("d"); LS.set("devId", v); return v; })();
+let statDays = {}, statsAll = {}, sheetQ = [];
+const dayKey = (t=Date.now()) => { const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+async function loadStats(){ statDays=(await idb.get("statDays"))||{}; statsAll=(await idb.get("statsAll"))||{}; sheetQ=(await idb.get("sheetQ"))||[]; }
+let statSaveT=null;
+function saveStatsSoon(){ clearTimeout(statSaveT); statSaveT=setTimeout(async()=>{ await idb.set("statDays",statDays); await idb.set("sheetQ",sheetQ); scheduleSync(); }, 800); }
+function logAnswer(kind, ok, item, grade){
+  const k=dayKey(), d=statDays[k]||(statDays[k]={});
+  const a=d[kind]||(d[kind]=[0,0]); a[0]++; if(ok) a[1]++;
+  const now=new Date();
+  sheetQ.push([k, now.toTimeString().slice(0,5), KIND[kind]||kind, String(item||""), ok?"✓":"✗", grade==null?"":["Eslay olmadim","Qiyin","Yaxshi","Oson"][grade]||""]);
+  if(sheetQ.length>5000) sheetQ=sheetQ.slice(-5000);
+  saveStatsSoon();
+}
+function logNew(n){ const k=dayKey(), d=statDays[k]||(statDays[k]={}); d.new=(d.new||0)+n; saveStatsSoon(); }
+function mergedDays(){
+  // barcha qurilmalar yig'indisi
+  const all={...statsAll, [devId]:statDays}, out={};
+  for(const dev in all) for(const day in all[dev]){
+    const src=all[dev][day], dst=out[day]||(out[day]={});
+    for(const k in src){ if(k==="new") dst.new=(dst.new||0)+src.new; else { const a=dst[k]||(dst[k]=[0,0]); a[0]+=src[k][0]; a[1]+=src[k][1]; } }
+  }
+  return out;
+}
+const sumDay = d => { let n=0,ok=0; for(const k in d) if(k!=="new"){ n+=d[k][0]; ok+=d[k][1]; } return [n,ok]; };
+function rangeSum(days, from, to){ let n=0,ok=0,nw=0; for(let i=from;i<to;i++){ const d=days[dayKey(Date.now()-i*DAY)]; if(d){ const [a,b]=sumDay(d); n+=a; ok+=b; nw+=d.new||0; } } return {n,ok,nw,acc:n?Math.round(ok/n*100):null}; }
+function streakDays(days){ let s=0; let i = days[dayKey()] ? 0 : 1; for(;;i++){ const d=days[dayKey(Date.now()-i*DAY)]; if(d && sumDay(d)[0]) s++; else break; } return s; }
+function stageOf(c){ if(!c.reps && !c.last) return "new"; const iv=c.interval||0; if(iv<7) return "learn"; if(iv<21) return "young"; return "mature"; }
+const STAGE_UZ = {new:"Yangi", learn:"O'rganilmoqda", young:"Mustahkamlanmoqda", mature:"O'zlashtirilgan"};
+
+function openStats(){
+  const days=mergedDays(), t=rangeSum(days,0,1), w=rangeSum(days,0,7), pw=rangeSum(days,7,14), m=rangeSum(days,0,30);
+  const st={new:0,learn:0,young:0,mature:0}; cards.forEach(c=>st[stageOf(c)]++);
+  const gst={new:0,learn:0,young:0,mature:0}; grams.forEach(g=>gst[stageOf(g)]++);
+  const hard=[...cards].filter(c=>(c.lapses||0)>0).sort((a,b)=>(b.lapses||0)-(a.lapses||0)).slice(0,6);
+  const byKind={}; for(let i=0;i<30;i++){ const d=days[dayKey(Date.now()-i*DAY)]; if(d) for(const k in d) if(k!=="new"){ const a=byKind[k]||(byKind[k]=[0,0]); a[0]+=d[k][0]; a[1]+=d[k][1]; } }
+  const trend = (w.acc!=null && pw.acc!=null) ? w.acc-pw.acc : null;
+  // 14 kunlik diagramma
+  const bars=[]; let mx=1; for(let i=13;i>=0;i--){ const d=days[dayKey(Date.now()-i*DAY)]||{}; const [n,ok]=sumDay(d); mx=Math.max(mx,n); bars.push({i,n,ok,lbl:new Date(Date.now()-i*DAY).getDate()}); }
+  const W=320,H=120,bw=W/14;
+  const svg=`<svg viewBox="0 0 ${W} ${H+16}" class="chart">${bars.map((b,k)=>{ const h=b.n/mx*H, ho=b.ok/mx*H, x=k*bw+3;
+    return `<rect x="${x}" y="${H-h}" width="${bw-6}" height="${h}" rx="3" fill="#f2c9bf"><title>${b.n} ta javob, ${b.ok} ta to'g'ri</title></rect><rect x="${x}" y="${H-ho}" width="${bw-6}" height="${ho}" rx="3" fill="#2f7d4f"/><text x="${x+(bw-6)/2}" y="${H+12}" text-anchor="middle" font-size="9" fill="#7b736a">${b.lbl}</text>`; }).join("")}</svg>`;
+  const total=cards.length||1;
+  const nx = LS.get("numXP",0), nerr=errW(), weakNum=CTX.filter(c=>(nerr[c.id]||0)>=1).sort((a,b)=>nerr[b.id]-nerr[a.id]).slice(0,3);
+  $("#modalBox").innerHTML=`<button class="iconbtn x" id="mx">✕</button>
+    <h3 style="margin:0 0 12px">📊 Statistika</h3>
+    <div class="kpis">
+      <div><b>🔥 ${streakDays(days)}</b><small>kun ketma-ket</small></div>
+      <div><b>${t.n}</b><small>bugungi javob</small></div>
+      <div><b>${w.acc==null?"—":w.acc+"%"}</b><small>7 kunlik aniqlik${trend==null?"":` <span class="${trend>=0?"up":"down"}">${trend>=0?"▲":"▼"} ${Math.abs(trend)}</span>`}</small></div>
+      <div><b>${st.mature}</b><small>o'zlashtirilgan so'z</small></div>
+    </div>
+    <div class="sec-t">Oxirgi 14 kun</div>${svg}
+    <div class="legend"><span><i style="background:#2f7d4f"></i>to'g'ri</span><span><i style="background:#f2c9bf"></i>xato</span></div>
+    <div class="sec-t">So'zlar holati (${cards.length} ta)</div>
+    <div class="stack">${["new","learn","young","mature"].map(k=>`<i class="s-${k}" style="width:${st[k]/total*100}%"></i>`).join("")}</div>
+    <div class="legend">${["new","learn","young","mature"].map(k=>`<span><i class="s-${k}"></i>${STAGE_UZ[k]}: <b>${st[k]}</b></span>`).join("")}</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">O'zlashtirilgan — keyingi takrori 3 haftadan keyin bo'lgan so'zlar.</div>
+    <div class="sec-t">30 kun bo'limlar bo'yicha</div>
+    ${Object.keys(byKind).length?Object.entries(byKind).map(([k,a])=>`<div class="krow"><span>${KIND[k]||k}</span><span class="muted">${a[0]} ta</span><div class="kbar"><i style="width:${Math.round(a[1]/a[0]*100)}%"></i></div><b>${Math.round(a[1]/a[0]*100)}%</b></div>`).join(""):`<div class="muted" style="font-size:13px">Hali javoblar yo'q — takrorlash yoki mashqni boshlang.</div>`}
+    <div class="sec-t">Umumiy</div>
+    <div class="muted" style="font-size:13.5px;line-height:1.7">30 kunda: <b>${m.n}</b> ta javob, aniqlik <b>${m.acc==null?"—":m.acc+"%"}</b>, <b>${m.nw}</b> ta yangi so'z qo'shildi<br>Grammatika: <b>${grams.length}</b> ta mavzu, ${gst.mature} tasi o'zlashtirilgan<br>Sonlar: <b>${nx}</b> XP${weakNum.length?` · qiyinlari: ${weakNum.map(c=>esc(c.c||"vaqt")).join(", ")}`:""}</div>
+    ${hard.length?`<div class="sec-t">Eng qiyin so'zlar</div><div class="row">${hard.map(c=>`<span class="tag dup ko" style="font-size:13px">${esc(c.ko)} · ${c.lapses}×</span>`).join("")}</div>`:""}
+    <div class="sec-t">Google Sheets</div>
+    ${sheetBlock()}`;
+  $("#modal").classList.add("on"); $("#mx").onclick=closeModal; wireSheetBlock(openStats);
+}
+
+/* --- Google Sheets --- */
+const SHEETS = "https://sheets.googleapis.com/v4/spreadsheets";
+const sheetId = () => LS.get("sheetId","");
+const sheetUrl = () => `https://docs.google.com/spreadsheets/d/${sheetId()}/edit`;
+function sheetBlock(){
+  if(!GOOGLE_CLIENT_ID) return `<div class="muted" style="font-size:13px">Google sinxronlash sozlanmagan.</div>`;
+  if(!LS.get("gsign",false)) return `<div class="muted" style="font-size:13px">Avval ☁️ orqali Google hisobingiz bilan kiring.</div>`;
+  if(!sheetId()) return `<p class="muted" style="font-size:13px;margin:0 0 8px">Natijalaringiz Google Drive'ingizdagi alohida jadvalga yozib boriladi: kunlik statistika, har bir javob, so'zlar ro'yxati va grafik.</p>
+    <button class="btn blue" id="shCreate">📊 Jadval yaratish</button><div class="status" id="shSt"></div>`;
+  const last=LS.get("sheetAt",0);
+  return `<div class="row"><a class="btn sm blue" href="${sheetUrl()}" target="_blank" rel="noopener">📊 Jadvalni ochish</a><button class="btn sm" id="shNow">↻ Hozir yangilash</button></div>
+    <div class="status" id="shSt">${last?"Oxirgi yozilgan: "+new Date(last).toLocaleString():""}${sheetQ.length?` · navbatda ${sheetQ.length} ta javob`:""}</div>`;
+}
+function wireSheetBlock(rerender){
+  const c=$("#shCreate"); if(c) c.onclick=async()=>{ const s=$("#shSt"); s.className="status"; s.innerHTML='<span class="spinner"></span> Jadval yaratilmoqda…';
+    try{ await createSheet(); await writeSheet(true); rerender(); }catch(e){ s.className="status err"; s.innerHTML=sheetErr(e); } };
+  const n=$("#shNow"); if(n) n.onclick=async()=>{ const s=$("#shSt"); s.className="status"; s.innerHTML='<span class="spinner"></span> Yozilmoqda…';
+    try{ await writeSheet(true); rerender(); }catch(e){ s.className="status err"; s.innerHTML=sheetErr(e); } };
+}
+function sheetErr(e){
+  if(e && e.code==="scope") return "Jadvalga yozish uchun Google ruxsati kerak. Ochilgan oynada «Google Drive'dagi shu ilova yaratgan fayllar» ga belgi qo'ying va qayta bosing.";
+  if(e && e.code==="auth") return "Google'ga qayta kiring (☁️ tugmasi) va yana urinib ko'ring.";
+  if(e && e.status===403 && /has not been used|disabled|SERVICE_DISABLED/i.test(e.message||"")) return "Google Cloud'da <b>Google Sheets API</b> yoqilmagan. console.cloud.google.com → qidiruvga «Google Sheets API» → <b>Enable</b>, keyin 1–2 daqiqa kutib qayta bosing.";
+  return "Xatolik: "+esc((e&&(e.message||e.status))||"noma'lum");
+}
+async function sfetch(url, opts={}){
+  if(!tokenOk()) throw {code:"auth"};
+  if(!LS.get("scopeFile",false)) throw {code:"scope"};
+  const r = await fetch(url, {...opts, headers:{"Content-Type":"application/json", ...(opts.headers||{}), Authorization:"Bearer "+gToken}});
+  if(r.status===401){ gToken=null; throw {code:"auth"}; }
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw {status:r.status, message:(j.error&&j.error.message)||("HTTP "+r.status)};
+  return j;
+}
+const ensureFileScope = () => { if(!LS.get("scopeFile",false)){ tokenClient && tokenClient.requestAccessToken({prompt:"consent", scope:SCOPE}); throw {code:"scope"}; } };
+async function createSheet(){
+  initGis(); ensureFileScope();
+  const j = await sfetch(SHEETS, {method:"POST", body:JSON.stringify({
+    properties:{title:"단어 — Koreys tili natijalarim", locale:"en_US"},
+    sheets:["Kunlik","Javoblar","So'zlar","Grammatika"].map((t,i)=>({properties:{sheetId:i, title:t, gridProperties:{frozenRowCount:1}}}))
+  })});
+  LS.set("sheetId", j.spreadsheetId); LS.set("sheetMod", Date.now());
+  const head = (sid, cols) => ({repeatCell:{range:{sheetId:sid,startRowIndex:0,endRowIndex:1,endColumnIndex:cols},cell:{userEnteredFormat:{textFormat:{bold:true},backgroundColor:{red:.96,green:.94,blue:.9}}},fields:"userEnteredFormat(textFormat,backgroundColor)"}});
+  await sfetch(`${SHEETS}/${j.spreadsheetId}/values:batchUpdate`, {method:"POST", body:JSON.stringify({valueInputOption:"RAW", data:[
+    {range:"Kunlik!A1", values:[["Sana","Jami javob","To'g'ri","Aniqlik %","So'z takrori","So'z mashqi","Grammatika","Sonlar","Yangi so'zlar"]]},
+    {range:"Javoblar!A1", values:[["Sana","Vaqt","Bo'lim","Element","Natija","Baho"]]},
+    {range:"So'zlar!A1", values:[["Koreyscha","O'qilishi","O'zbekcha","Inglizcha","Papka","Holati","Interval (kun)","To'g'ri","Unutilgan","Keyingi takror","Qo'shilgan"]]},
+    {range:"Grammatika!A1", values:[["Mavzu","Nomi","Daraja","Holati","To'g'ri","Unutilgan","Keyingi takror"]]}]})});
+  await sfetch(`${SHEETS}/${j.spreadsheetId}:batchUpdate`, {method:"POST", body:JSON.stringify({requests:[
+    head(0,9), head(1,6), head(2,11), head(3,7),
+    {addChart:{chart:{position:{overlayPosition:{anchorCell:{sheetId:0,rowIndex:1,columnIndex:10},widthPixels:640,heightPixels:340}},
+      spec:{title:"Kunlik javoblar va aniqlik", basicChart:{chartType:"COMBO", legendPosition:"BOTTOM_LEGEND", headerCount:1,
+        axis:[{position:"BOTTOM_AXIS",title:"Sana"},{position:"LEFT_AXIS",title:"Javoblar"},{position:"RIGHT_AXIS",title:"Aniqlik %"}],
+        domains:[{domain:{sourceRange:{sources:[{sheetId:0,startRowIndex:0,endRowIndex:400,startColumnIndex:0,endColumnIndex:1}]}}}],
+        series:[{series:{sourceRange:{sources:[{sheetId:0,startRowIndex:0,endRowIndex:400,startColumnIndex:1,endColumnIndex:2}]}},targetAxis:"LEFT_AXIS",type:"COLUMN"},
+                {series:{sourceRange:{sources:[{sheetId:0,startRowIndex:0,endRowIndex:400,startColumnIndex:3,endColumnIndex:4}]}},targetAxis:"RIGHT_AXIS",type:"LINE"}]}}}}}
+  ]})});
+  scheduleSync();
+}
+let sheetBusy=false;
+async function writeSheet(force){
+  const id=sheetId(); if(!id || sheetBusy) return;
+  if(!force && Date.now()-LS.get("sheetAt",0) < 3*MIN && !sheetQ.length) return;
+  if(!tokenOk() || !LS.get("scopeFile",false)) { if(force) ensureFileScope(); return; }
+  sheetBusy=true;
+  try{
+    const q=sheetQ.slice();
+    if(q.length) await sfetch(`${SHEETS}/${id}/values/${encodeURIComponent("Javoblar!A:F")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {method:"POST", body:JSON.stringify({values:q})});
+    sheetQ=sheetQ.slice(q.length); await idb.set("sheetQ", sheetQ);
+    const days=mergedDays(), dk=Object.keys(days).sort();
+    const daily=dk.map(k=>{ const d=days[k], [n,ok]=sumDay(d), g=x=>d[x]?d[x][0]:0;
+      return [k, n, ok, n?Math.round(ok/n*100):"", g("w"), g("wp"), g("g")+g("gp"), g("n"), d.new||0]; });
+    const fmt = t => t ? new Date(t).toISOString().slice(0,10) : "";
+    const words=[...cards].sort((a,b)=>(a.created||0)-(b.created||0)).map(c=>[c.ko,c.roman||"",c.uz||"",c.en||"",folderName(c.folder),STAGE_UZ[stageOf(c)],Math.round((c.interval||0)*10)/10,c.reps||0,c.lapses||0,fmt(c.due),fmt(c.created)]);
+    const gr=[...grams].sort((a,b)=>(a.created||0)-(b.created||0)).map(g=>[g.title,g.name_uz||"",g.level||"",STAGE_UZ[stageOf(g)],g.reps||0,g.lapses||0,fmt(g.due)]);
+    await sfetch(`${SHEETS}/${id}/values:batchClear`, {method:"POST", body:JSON.stringify({ranges:["Kunlik!A2:I","So'zlar!A2:K","Grammatika!A2:G"]})});
+    await sfetch(`${SHEETS}/${id}/values:batchUpdate`, {method:"POST", body:JSON.stringify({valueInputOption:"RAW", data:[
+      {range:"Kunlik!A2", values:daily.length?daily:[[""]]}, {range:"So'zlar!A2", values:words.length?words:[[""]]}, {range:"Grammatika!A2", values:gr.length?gr:[[""]]}]})});
+    LS.set("sheetAt", Date.now());
+  }catch(e){
+    if(e && e.status===404){ LS.set("sheetId",""); LS.set("sheetMod",Date.now()); }   // jadval o'chirib yuborilgan
+    if(force) throw e;
+  }finally{ sheetBusy=false; }
+}
+$("#statsBtn").onclick = openStats;
 
 /* ================= ilova (PWA) ================= */
 let deferredInstall = null;
@@ -1972,6 +2189,7 @@ async function init(){
   try{
     cards = (await idb.all()) || [];
     grams = (await idb.gAll()) || [];
+    await loadStats();
     folders = (await idb.get("folders")) || [];
     if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
   }catch(e){ notice("Brauzer xotirasiga ulanib bo'lmadi. Maxfiy (incognito) rejimda bo'lsangiz, oddiy oynada oching."); }
