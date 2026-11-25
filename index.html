@@ -68,6 +68,22 @@ nav.tabs button{flex:1;border:0;background:transparent;padding:7px 1px 6px;borde
 nav.tabs button i{font-style:normal;font-size:17px;line-height:1}
 @media (max-width:420px){nav.tabs button{font-size:10.5px;letter-spacing:-.01em}}
 .badge{position:absolute;top:2px;right:6px;background:var(--red);color:#fff;font-style:normal;font-size:10px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.3}
+.kindseg{margin-bottom:12px}.kindseg button{font-size:14px;padding:11px 4px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+@media (max-width:420px){.fgrid{grid-template-columns:1fr 1fr}}
+.ftile{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow)}
+.ftile .fe{font-size:30px}.ftile b{font-size:14.5px;line-height:1.25}.ftile .fm{font-size:12px;color:var(--muted)}
+.fbar{height:5px;background:#eee6da;border-radius:99px;overflow:hidden;margin-top:4px}.fbar i{display:block;height:100%;background:var(--green)}
+.lib-head{display:flex;align-items:center;gap:10px;margin-top:10px}.lib-head .fe{font-size:30px}
+.tile .k.long{font-size:15px}
+.g-list2{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.g-group{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin:10px 2px 2px}
+.g-row{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left}
+.g-num{flex:none;min-width:40px;text-align:center;font-weight:800;font-size:13px;background:var(--blue-soft);color:var(--blue);border-radius:8px;padding:4px 6px}
+.g-num.my{background:#eee6da;color:var(--muted)}
+.g-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.g-row .g-tt{font-size:16px;font-weight:700}.g-row .g-tm{font-size:12.5px;color:#5a534b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-lv{flex:none;margin:0}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#ebe4d9;padding:4px;border-radius:12px;margin-bottom:10px}
 .seg button{border:0;background:transparent;padding:9px 4px;border-radius:9px;font-weight:700;font-size:13px;color:#5d564e}
 .seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -329,7 +345,9 @@ body.hide-roman .roman:not(.show), body.hide-roman .ex .r:not(.show), body.hide-
   <div class="folders" id="folders"></div>
 
   <section id="tab-add">
-    <div class="panel">
+    <div class="seg kindseg"><button data-ak="word">🔤 So'z qo'shish</button><button data-ak="gram">📘 Grammatika qo'shish</button></div>
+    <div id="addGramBox" class="panel hidden"></div>
+    <div class="panel" id="addWordBox">
       <div class="seg"><button data-am="ai">✨ Avtomatik (Gemini)</button><button data-am="paste">📋 ChatGPT / Gemini natijasi</button></div>
       <div id="aiBox">
       <textarea id="inWord" class="field" rows="2" placeholder="Yangi so'z: 사과, olma yoki apple… Bir nechta so'zni vergul yoki yangi qator bilan ajrating."></textarea>
@@ -373,6 +391,7 @@ body.hide-roman .roman:not(.show), body.hide-roman .ex .r:not(.show), body.hide-
   <section id="tab-library" class="hidden">
     <input id="search" class="field" placeholder="Qidirish: koreyscha, o'zbekcha yoki inglizcha…">
     <div id="enFill"></div>
+    <div id="libHead"></div>
     <div class="grid" id="grid"></div>
   </section>
 </div>
@@ -748,7 +767,7 @@ $("#pickPhoto").onclick = () => $("#fileIn").click();
 $("#fileIn").onchange = e => setPhoto(e.target.files[0]);
 $("#clearPhoto").onclick = clearPhoto;
 document.addEventListener("paste", e => {
-  if(tab!=="add") return;
+  if(tab!=="add" || addKind!=="word") return;
   const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
   if(it){ e.preventDefault(); setPhoto(it.getAsFile()); }
 });
@@ -1003,7 +1022,7 @@ function renderFolders(){
   const cnt = id => cards.filter(c=>id==="all"||c.folder===id).length;
   if(curFolder!=="all" && !folders.find(f=>f.id===curFolder)) curFolder="all";
   let h = `<button class="chip ${curFolder==="all"?"on":""}" data-fo="all">Hammasi <span class="n">${cards.length}</span></button>`;
-  for(const f of folders) h += `<button class="chip ${curFolder===f.id?"on":""}" data-fo="${esc(f.id)}">📁 ${esc(f.name)} <span class="n">${cnt(f.id)}</span></button>`;
+  for(const f of folders) if(cnt(f.id) || !String(f.id).startsWith("t-")) h += `<button class="chip ${curFolder===f.id?"on":""}" data-fo="${esc(f.id)}">${fEmoji(f)} ${esc(f.name)} <span class="n">${cnt(f.id)}</span></button>`;
   h += addingFolder ? `<span class="chip add"><input id="newFolder" placeholder="Papka nomi" maxlength="40"><button class="btn sm" id="okFolder">OK</button></span>`
                     : `<button class="chip add" id="addFolderBtn">＋ Papka</button>`;
   if(curFolder!=="all") h += `<button class="chip" id="renFolder">✎ Nomini o'zgartirish</button>`;
@@ -1030,7 +1049,7 @@ function renderFolders(){
   sel.innerHTML = folders.length ? folders.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("") : `<option value="">Asosiy</option>`;
   if(curFolder!=="all") sel.value=curFolder; else if(keep && folders.find(f=>f.id===keep)) sel.value=keep;
   $("#stTotal").textContent = cards.filter(inFolder).length;
-  $("#stDue").textContent = dueCards().length;
+  { const d=dueCards(); $("#stDue").textContent = d.filter(c=>!isNew(c)).length + Math.min(20, d.filter(isNew).length); }
 }
 
 /* ================= spaced repetition ================= */
@@ -1219,19 +1238,77 @@ Format: {"items":[{"id":"…","en":"so'z tarjimasi (1–3 ma'no, vergul bilan)",
   }
   box.innerHTML=`<div class="status">✓ ${done} ta kartaga inglizcha tarjima qo'shildi.</div>`; renderLibrary();
 }
+/* ================= lug'at: mavzu papkalari ================= */
+const EXTRA_THEMES = [{id:"t-oila",name:"Oila va odamlar",emoji:"👨‍👩‍👧"},{id:"t-boshqa",name:"Boshqa so'zlar",emoji:"📦"}];
+let libFolder = null;
+const fEmoji = f => (f && f.emoji) || "📁";
+function folderStats(id){
+  const list=cards.filter(c=>id==="all"||c.folder===id), now=Date.now();
+  return {n:list.length, due:list.filter(c=>!isNew(c)&&(c.due||0)<=now).length, nw:list.filter(isNew).length, mature:list.filter(c=>(c.interval||0)>=21).length};
+}
 function renderLibrary(){
   const lack = cards.filter(c=>!c.en).length, fb=$("#enFill");
   if(fb && !fb.querySelector(".spinner")) fb.innerHTML = lack ? `<div class="en-fill"><span>🇬🇧 ${lack} ta kartada inglizcha tarjima yo'q.</span><button class="btn sm blue" id="enBtn">Qo'shish (${Math.ceil(lack/25)} ta so'rov)</button></div>` : (fb.querySelector(".status")?fb.innerHTML:"");
   const eb=$("#enBtn"); if(eb) eb.onclick=fillEnglish;
-  const q=$("#search").value.trim().toLowerCase();
-  const list=cards.filter(inFolder).filter(c=>!q||[c.ko,c.uz,c.en,c.roman].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
-  if(!list.length){ $("#grid").innerHTML=`<div class="muted" style="grid-column:1/-1;padding:20px;text-align:center">${q?"Hech narsa topilmadi.":"Bu papkada hali so'z yo'q."}</div>`; return; }
+  const q=$("#search").value.trim().toLowerCase(), grid=$("#grid"), head=$("#libHead");
+  const unsorted=cards.filter(c=>!String(c.folder||"").startsWith("t-")).length;
+  if(!q && !libFolder){
+    // papkalar ko'rinishi
+    const used=folders.filter(f=>cards.some(c=>c.folder===f.id) || String(f.id).startsWith("t-"));
+    head.innerHTML = unsorted ? `<div class="en-fill"><span>🗂 ${unsorted} ta so'z mavzusiz papkalarda.</span><button class="btn sm blue" id="sortBtn">Mavzular bo'yicha saralash</button></div>` : "";
+    const sb=$("#sortBtn"); if(sb) sb.onclick=sortByTheme;
+    grid.className="fgrid";
+    const tiles=[{id:"all",name:"Hamma so'zlar",emoji:"📚"}, ...used.filter(f=>folderStats(f.id).n)];
+    grid.innerHTML=tiles.map(f=>{ const s=folderStats(f.id), pct=s.n?Math.round(s.mature/s.n*100):0;
+      return `<button class="ftile" data-lf="${esc(f.id)}"><span class="fe">${fEmoji(f)}</span><b>${esc(f.name)}</b><span class="fm">${s.n} ta so'z${s.due?` · <span style="color:var(--red)">${s.due} takrorga</span>`:""}${s.nw?` · <span style="color:var(--blue)">${s.nw} yangi</span>`:""}</span><span class="fbar"><i style="width:${pct}%"></i></span></button>`; }).join("")
+      || `<div class="muted" style="padding:20px">Hali so'z yo'q.</div>`;
+    grid.querySelectorAll("[data-lf]").forEach(b=>b.onclick=()=>{ libFolder=b.dataset.lf; renderLibrary(); window.scrollTo(0,0); });
+    return;
+  }
+  grid.className="grid";
+  const f = libFolder==="all" ? {name:"Hamma so'zlar",emoji:"📚"} : folders.find(x=>x.id===libFolder);
+  const list=cards.filter(c=>q ? [c.ko,c.uz,c.en,c.roman].join(" ").toLowerCase().includes(q) : (libFolder==="all"||c.folder===libFolder))
+    .sort((a,b)=>((a.lesson||99)-(b.lesson||99)) || ((b.created||0)-(a.created||0)));
+  const s = libFolder && !q ? folderStats(libFolder) : null;
+  head.innerHTML = q ? `<div class="muted" style="font-size:13px;margin-top:8px">Qidiruv: ${list.length} ta natija</div>` : `
+    <div class="lib-head"><button class="iconbtn" id="libBack">←</button><span class="fe">${fEmoji(f)}</span><div style="flex:1"><b>${esc(f?f.name:"Papka")}</b><div class="muted" style="font-size:12.5px">${s.n} ta so'z · ${s.mature} tasi o'zlashtirilgan</div></div></div>
+    <div class="row" style="margin-top:8px"><button class="btn sm primary" id="libRev">🔁 Takrorlash${s.due+Math.min(s.nw,20)?` (${s.due+Math.min(s.nw,20)})`:""}</button><button class="btn sm" id="libPr">🎯 Mashq</button></div>`;
+  const bk=$("#libBack"); if(bk) bk.onclick=()=>{ libFolder=null; renderLibrary(); };
+  const go=t=>{ curFolder=libFolder; LS.set("folder",curFolder); session=null; pr=null; document.querySelector(`nav.tabs button[data-tab="${t}"]`).click(); };
+  const lr=$("#libRev"); if(lr) lr.onclick=()=>go("review");
+  const lp=$("#libPr"); if(lp) lp.onclick=()=>go("practice");
+  if(!list.length){ grid.innerHTML=`<div class="muted" style="grid-column:1/-1;padding:20px;text-align:center">${q?"Hech narsa topilmadi.":"Bu papkada hali so'z yo'q."}</div>`; return; }
   const now=Date.now();
-  $("#grid").innerHTML=list.map(c=>{
+  grid.innerHTML=list.map(c=>{
     const cls=isNew(c)?"":((c.due||0)<=now?"due":"ok");
-    return `<button class="tile" data-c="${esc(c.id)}">${picHTML(c)}<div class="k">${esc(c.ko)}</div><div class="u">${esc(c.uz)}</div><div class="d"><span class="dot ${cls}"></span>${dueLabel(c)}</div></button>`;
+    return `<button class="tile" data-c="${esc(c.id)}">${picHTML(c)}<div class="k ${c.ko.length>8?"long":""}">${esc(c.ko)}</div><div class="u">${esc(c.uz)}</div><div class="d"><span class="dot ${cls}"></span>${c.lesson?c.lesson+"-dars · ":""}${dueLabel(c)}</div></button>`;
   }).join("");
-  $("#grid").querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>openCard(b.dataset.c));
+  grid.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>openCard(b.dataset.c));
+}
+async function sortByTheme(){
+  if(!settings.key){ openSettings(); return; }
+  const themes=[...folders.filter(f=>String(f.id).startsWith("t-")), ...EXTRA_THEMES.filter(t=>!folders.find(f=>f.id===t.id))];
+  const todo=cards.filter(c=>!String(c.folder||"").startsWith("t-")), head=$("#libHead");
+  const oldF=new Set(todo.map(c=>c.folder));
+  for(let i=0;i<todo.length;i+=80){
+    const part=todo.slice(i,i+80);
+    head.innerHTML=`<div class="status"><span class="spinner"></span> Saralanmoqda… ${i}/${todo.length}</div>`;
+    try{
+      const j=await patient(()=>gemini([{text:`Koreyscha so'zlarni mavzular bo'yicha ajrat. Faqat JSON qaytar.
+Mavzular (id: nomi): ${themes.map(t=>t.id+": "+t.name).join("; ")}
+So'zlar: ${JSON.stringify(part.map(c=>({id:c.id,ko:c.ko,uz:c.uz})))}
+Har bir so'zga eng mos mavzu id sini ber. Format: {"items":[{"id":"…","theme":"t-…"}]}`}]), head.querySelector(".status"), "Saralanmoqda…");
+      for(const it of (j.items||[])){
+        const c=cards.find(x=>x.id===it.id), t=themes.find(x=>x.id===it.theme); if(!c||!t) continue;
+        if(!folders.find(f=>f.id===t.id)){ folders.push({...t, mod:Date.now()}); }
+        c.folder=t.id; c.emoji=c.emoji||t.emoji;
+      }
+      await persistMany(part);
+    }catch(e){ head.innerHTML=`<div class="status err">${errText(e)}</div>`; return; }
+  }
+  for(const id of oldF) if(id && !cards.some(c=>c.folder===id)) await removeFolder(id);
+  await saveFolders(); renderAll();
+  head.innerHTML=`<div class="status">✓ ${todo.length} ta so'z mavzular bo'yicha joylashtirildi.</div>`;
 }
 let cardImgState = null;
 function openCard(id){
@@ -1600,7 +1677,7 @@ function pastePanel(){
 function wirePaste(){
   const t=$("#gpTitle"), x=$("#gpText"), st=$("#gStatus");
   t.oninput=()=>LS.set("gpTitle",t.value); x.oninput=()=>LS.set("gpText",x.value);
-  const done=(n,how)=>{ LS.set("gpTitle",""); LS.set("gpText",""); renderGrammar(); const s=$("#gStatus"); s.className="status"; s.textContent=`✓ ${n} ta mavzu saqlandi${how}.`; };
+  const done=(n,how)=>{ LS.set("gpTitle",""); LS.set("gpText",""); renderGramAdd(); const s=$("#gStatus"); s.className="status"; s.textContent=`✓ ${n} ta mavzu saqlandi${how}.`; };
   $("#gpSave").onclick=async()=>{
     const text=x.value.trim(), title=t.value.trim();
     if(!text){ st.className="status err"; st.textContent="Tushuntirish matnini joylashtiring."; return; }
@@ -1637,6 +1714,7 @@ Format: {"quiz":[{"sentence":"gap, grammatika o'rnida ___","base":"asos so'z","a
 }
 
 function updGBadge(){ const gb=$("#gBadge"); if(gb){ const n=gDue().length; gb.textContent=n; gb.classList.toggle("hidden", !n); } }
+function gNumKey(g){ const m=String(g.num||"").match(/^(\d+)(?:\.(\d+))?/); return m ? (+m[1])*100+(+m[2]||0) : 1e9 - (g.created||0)/1e13; }
 function renderGrammar(){
   const el = $("#tab-grammar"); updGBadge();
   if(gSession){ renderGReview(); return; }
@@ -1644,9 +1722,30 @@ function renderGrammar(){
   if(gOpen){ renderGDetail(); return; }
   const due = gDue().length, quizN = gramQuestions().length;
   const q = gSearch.toLowerCase();
-  const list = grams.filter(g=>!q || [g.title,g.name_uz,g.meaning,g.topic].join(" ").toLowerCase().includes(q)).sort((a,b)=>(b.created||0)-(a.created||0));
+  const list = grams.filter(g=>!q || [g.title,g.name_uz,g.meaning,g.topic,g.num].join(" ").toLowerCase().includes(q)).sort((a,b)=>gNumKey(a)-gNumKey(b));
+  let last=null;
+  const tiles = list.map(g=>{
+    const lesson = g.num ? String(g.num).split(".")[0]+"-dars" : "Mening mavzularim";
+    const hd = lesson!==last ? `<div class="g-group">${esc(lesson)}</div>` : ""; last=lesson;
+    const d=(g.due||0)<=Date.now(), cls=!g.reps&&!g.last?"":(d?"due":"ok");
+    return hd+`<button class="g-row" data-g="${esc(g.id)}">${g.num?`<span class="g-num">${esc(g.num)}</span>`:`<span class="g-num my">✎</span>`}<span class="g-main"><span class="g-tt ko">${esc(cleanTitle(g.title))}</span><span class="g-tm">${esc(g.name_uz||g.meaning)}</span></span>${g.level?`<span class="tag h g-lv">${esc(g.level)}</span>`:""}<span class="dot ${cls}"></span></button>`;
+  }).join("");
+  el.innerHTML = grams.length ? `
+    <div class="g-actions" style="margin-top:0">
+      <button class="panel g-act" id="gRev" ${due?"":"disabled"}><span class="i">🔁</span><b>Takrorlash</b><span>${due?`${due} ta mavzu tayyor`:"Hozircha yo'q"}</span></button>
+      <button class="panel g-act" id="gQuiz" ${quizN?"":"disabled"}><span class="i">✍️</span><b>Test</b><span>${quizN?(quizN>10?`${quizN} ta savoldan 10 tasi`:`${quizN} ta savol`):"Savollar yo'q"}</span></button>
+    </div>
+    <input id="gSearchIn" class="field" style="margin-top:10px" placeholder="Qidirish: raqam, nom yoki ma'no…" value="${esc(gSearch)}">
+    <div class="g-list2">${tiles||`<div class="muted" style="padding:14px">Hech narsa topilmadi.</div>`}</div>`
+    : `<div class="panel empty"><div class="e">📝</div><h3>Hali grammatika yo'q</h3><p class="muted">«Qo'shish» → «📘 Grammatika qo'shish» orqali mavzu qo'shing.</p></div>`;
+  const gr=$("#gRev"); if(gr) gr.onclick=()=>startGReview();
+  const gqz=$("#gQuiz"); if(gqz) gqz.onclick=()=>startGPractice();
+  const si=$("#gSearchIn"); if(si) si.oninput=()=>{ gSearch=si.value; const pos=si.selectionStart; renderGrammar(); const n=$("#gSearchIn"); n.focus(); n.setSelectionRange(pos,pos); };
+  el.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ gOpen=b.dataset.g; renderGrammar(); window.scrollTo(0,0); });
+}
+function renderGramAdd(){
+  const el=$("#addGramBox"); if(!el) return;
   el.innerHTML = `
-    <div class="panel">
       <h3 style="margin:0 0 10px">Yangi mavzu</h3>
       <div class="seg"><button data-gm="ai" class="${gMode==="ai"?"on":""}">✨ Gemini tushuntirsin</button><button data-gm="paste" class="${gMode==="paste"?"on":""}">📋 Tayyor matnni joylash</button></div>
       ${gMode==="paste" ? pastePanel()+`<div class="status" id="gStatus"></div>` : `
@@ -1661,35 +1760,29 @@ function renderGrammar(){
       <input type="file" id="gFile" accept="image/*" class="hidden">
       <div class="status" id="gStatus"></div>
       <div id="gPreview"></div>`}
-    </div>
-    ${grams.length?`
-    <div class="g-actions">
-      <button class="panel g-act" id="gRev" ${due?"":"disabled"}><span class="i">🔁</span><b>Takrorlash</b><span>${due?`${due} ta mavzu tayyor`:"Hozircha yo'q"}</span></button>
-      <button class="panel g-act" id="gQuiz" ${quizN?"":"disabled"}><span class="i">✍️</span><b>Test</b><span>${quizN?(quizN>10?`${quizN} ta savoldan 10 tasi`:`${quizN} ta savol`):"Savollar yo'q"}</span></button>
-    </div>
-    <input id="gSearchIn" class="field" style="margin-top:10px" placeholder="Qidirish…" value="${esc(gSearch)}">
-    <div class="g-grid">${list.map(g=>{
-      const d=(g.due||0)<=Date.now(), cls=!g.reps&&!g.last?"":(d?"due":"ok");
-      return `<button class="g-tile" data-g="${esc(g.id)}"><div class="g-tt ko">${esc(g.title)}</div><div class="g-tm">${esc(g.name_uz||g.meaning)}</div><div class="d"><span class="dot ${cls}"></span>${dueLabel(g)}</div></button>`;
-    }).join("")||`<div class="muted" style="padding:14px">Hech narsa topilmadi.</div>`}</div>`
-    : `<div class="panel empty" style="margin-top:10px"><div class="e">📝</div><h3>Hali grammatika yo'q</h3><p class="muted">Mavzuni yozing yoki darslikdan skrinshot yuboring — tushuntirish shu yerda saqlanadi.</p></div>`}`;
-  el.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ if(gMode==="ai") keepInputs(); gMode=b.dataset.gm; LS.set("gMode",gMode); renderGrammar(); });
+    `;
+  el.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ if(gMode==="ai") keepInputs(); gMode=b.dataset.gm; LS.set("gMode",gMode); renderGramAdd(); });
   if(gMode==="paste"){ wirePaste(); }
   else {
-  $("#gPick").onclick = () => $("#gFile").click();
-  $("#gFile").onchange = e => { const f=e.target.files[0]; if(!f) return; gPhoto={blob:f, url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); };
-  const px=$("#gPhotoX"); if(px) px.onclick=()=>{ gPhoto=null; keepInputs(); renderGrammar(); };
-  $("#gMake").onclick = makeGrammar;
+    $("#gPick").onclick = () => $("#gFile").click();
+    $("#gFile").onchange = e => { const f=e.target.files[0]; if(!f) return; gPhoto={blob:f, url:URL.createObjectURL(f)}; keepInputs(); renderGramAdd(); };
+    const px=$("#gPhotoX"); if(px) px.onclick=()=>{ gPhoto=null; keepInputs(); renderGramAdd(); };
+    $("#gMake").onclick = makeGrammar;
   }
-  const gr=$("#gRev"); if(gr) gr.onclick=()=>startGReview();
-  const gqz=$("#gQuiz"); if(gqz) gqz.onclick=()=>startGPractice();
-  const si=$("#gSearchIn"); if(si) si.oninput=()=>{ gSearch=si.value; const pos=si.selectionStart; renderGrammar(); const n=$("#gSearchIn"); n.focus(); n.setSelectionRange(pos,pos); };
-  el.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ gOpen=b.dataset.g; renderGrammar(); window.scrollTo(0,0); });
   if(gDraft && gDraft.title) renderGPreview();
 }
+let addKind = LS.get("addKind","word");
+function renderAddKind(){
+  document.querySelectorAll("[data-ak]").forEach(b=>b.classList.toggle("on", b.dataset.ak===addKind));
+  $("#addWordBox").classList.toggle("hidden", addKind!=="word");
+  $("#addGramBox").classList.toggle("hidden", addKind!=="gram");
+  $("#folders").classList.toggle("hidden", addKind==="gram");
+  if(addKind==="gram") renderGramAdd();
+}
+document.querySelectorAll("[data-ak]").forEach(b=>b.onclick=()=>{ addKind=b.dataset.ak; LS.set("addKind",addKind); renderAddKind(); });
 function keepInputs(){ gDraft = {...(gDraft||{}), _topic:$("#gTopic")?.value||"", _question:$("#gQuestion")?.value||""}; }
 document.addEventListener("paste", e=>{
-  if(tab!=="grammar" || gSession || gPr || gOpen) return;
+  if(!(tab==="add" && addKind==="gram")) return;
   const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
   if(it){ e.preventDefault(); const f=it.getAsFile(); gPhoto={blob:f,url:URL.createObjectURL(f)}; keepInputs(); renderGrammar(); }
 });
@@ -1704,7 +1797,7 @@ async function makeGrammar(){
       const t = looksJSON(topic) ? "" : topic;
       if(t && parsed.length===1 && !parsed[0].title) parsed[0].title=t;
       await saveGramItems(parsed.map(g=>({...g, topic:t})), {source:"chatgpt"});
-      gDraft=null; gPhoto=null; renderGrammar();
+      gDraft=null; gPhoto=null; renderGramAdd();
       const st=$("#gStatus"); st.className="status"; st.textContent=`✓ ChatGPT/Gemini javobi tanildi: ${parsed.length} ta mavzu saqlandi (Gemini kaliti sarflanmadi).`;
       return;
     }
@@ -1731,13 +1824,13 @@ function renderGPreview(){
     <textarea id="gNote" class="field" rows="2" placeholder="O'zingiz uchun eslatma: o'qituvchi aytgan gap, misol…">${esc(gDraft.note||"")}</textarea>
     <div class="row" style="margin-top:12px"><button class="btn primary" id="gSave">Saqlash</button><button class="btn" id="gRegen">Qayta yaratish</button><button class="btn" id="gCancel">Bekor qilish</button></div></div>`;
   $("#gNote").oninput=e=>{ gDraft.note=e.target.value; };
-  $("#gCancel").onclick=()=>{ gDraft=null; gPhoto=null; renderGrammar(); };
+  $("#gCancel").onclick=()=>{ gDraft=null; gPhoto=null; renderGramAdd(); };
   $("#gRegen").onclick=makeGrammar;
   $("#gSave").onclick=async()=>{
     const {_topic,_question,...g} = gDraft; const now=Date.now();
     const item = {...g, id:uid("g"), qa:[], created:now, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0};
     await persistGram(item);
-    gDraft=null; gPhoto=null; renderGrammar();
+    gDraft=null; gPhoto=null; renderGramAdd();
     const s=$("#gStatus"); if(s){ s.className="status"; s.textContent=`✓ «${item.title}» saqlandi.`; }
   };
 }
@@ -2433,6 +2526,7 @@ async function syncNow(){
     for(const name in files) if(/^img-/.test(name) && !used.has(name)) await driveDel(files[name]);
 
     LS.set("lastSync", Date.now()); cloudState("ok"); renderAll();
+    if(LS.get("seed","")!==SEED_ID) setTimeout(applySeed, 300);
     writeSheet(false).catch(()=>{});
   }catch(e){
     if(e && e.code==="auth") cloudState("need");
@@ -2647,13 +2741,36 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
   navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 
+/* ================= darslik to'plami (20–35) ================= */
+const SEED_ID="20-35-v1";
+let seeding=false;
+async function applySeed(){
+  if(seeding || LS.get("seed","")===SEED_ID) return; seeding=true;
+  try{
+    const s=await (await fetch("seed-20-35.json",{cache:"no-cache"})).json();
+    // foydalanuvchi so'rovi: eski grammatika mavzulari o'chiriladi, darslik mavzulari qo'shiladi
+    for(const g of grams.filter(g=>!String(g.id).startsWith("L"))) await removeGram(g.id);
+    const now=Date.now(), have=new Set(grams.map(g=>g.id));
+    const ng=s.grammar.filter(g=>!have.has(g.id)).map((g,i)=>stamp({...g, qa:[], created:now+i, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0}));
+    if(ng.length){ await idb.gPutMany(ng); grams.push(...ng); }
+    for(const f of s.folders) if(!folders.find(x=>x.id===f.id)) folders.push({...f, mod:now});
+    await idb.set("folders", folders);
+    const kos=new Set(cards.map(c=>c.ko)), ids=new Set(cards.map(c=>c.id));
+    const nw=s.words.filter(w=>!kos.has(w.ko)&&!ids.has(w.id)).map((w,i)=>stamp({...w, roman:"", en:"", note:"", hanja:"", examples:[], img:null, created:now+i, due:now, reps:0, interval:0, ease:2.5, lapses:0, last:0}));
+    if(nw.length){ await idb.putMany(nw); cards.push(...nw); }
+    LS.set("seed", SEED_ID); scheduleSync(); renderAll();
+    notice(`📚 20–35-darslar qo'shildi: ${ng.length} ta grammatika mavzusi va ${nw.length} ta yangi so'z (mavzular bo'yicha papkalarda).`);
+  }catch(e){} finally{ seeding=false; }
+}
+
 /* ================= tabs & init ================= */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.toggle("on",x===b));
   ["add","review","practice","library","grammar","numbers"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==tab));
-  $("#folders").classList.toggle("hidden", tab==="numbers" || tab==="grammar");
+  $("#folders").classList.toggle("hidden", tab==="numbers" || tab==="grammar" || tab==="library" || (tab==="add" && addKind==="gram"));
   if(tab!=="grammar"){ gSession=null; gPr=null; gOpen=null; }
+  if(tab!=="library") libFolder=null;
   if(tab!=="numbers"){ nl=null; numView="home"; }
   if(tab!=="practice") pr=null;
   renderAll();
@@ -2663,6 +2780,7 @@ function renderAll(){
   if(tab==="review" && (!session || !session.flipped)) renderReview();
   if(tab==="practice" && !pr) renderPractice();
   if(tab==="library") renderLibrary();
+  if(tab==="add" && addKind==="gram" && !document.activeElement.closest?.("#addGramBox")) renderGramAdd();
   if(tab==="numbers" && !nl) renderNumbers();
   if(tab==="grammar" && !gSession && !gPr && !gOpen && !document.activeElement.closest?.("#tab-grammar")) renderGrammar();
   updGBadge();
@@ -2696,7 +2814,8 @@ async function init(){
     if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
   }catch(e){ notice("Brauzer xotirasiga ulanib bo'lmadi. Maxfiy (incognito) rejimda bo'lsangiz, oddiy oynada oching."); }
   renderAll();
-  bootGoogle(); renderAccount();
+  bootGoogle(); renderAccount(); renderAddKind();
+  if(!LS.get("gsign",false)) applySeed(); else setTimeout(applySeed, 20000);
   if(!settings.key) notice(`Boshlash uchun bepul Gemini kalitini kiriting: <a href="#" id="nk" style="color:inherit;font-weight:800">⚙️ Sozlamalarni ochish</a>`), $("#nk") && ($("#nk").onclick=e=>{e.preventDefault();openSettings();});
 }
 init();
